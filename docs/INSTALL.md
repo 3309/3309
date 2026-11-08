@@ -1,64 +1,48 @@
-# NEXUS — Install on your Galaxy S22
+# NEXUS — Install on your Galaxy S22 (IWM proof of concept)
 
-About 15 minutes. No programming. You need two files from this project:
+About 15 minutes, no programming. You need two files: **NEXUS.klwp** (wallpaper) and
+**NEXUS.prj.xml** (Tasker). Download both to your phone's **Downloads** folder.
 
-| File | What it is |
-|---|---|
-| `NEXUS.klwp` | The wallpaper (clock, weather, stocks, chart, 3 buttons) |
-| `NEXUS.prj.xml` | The Tasker project that fetches stock prices |
-
-Download both to your phone. They'll end up in your **Downloads** folder.
-
----
-
-## Part A — One-time phone settings (Samsung)
-
+## Part A — Samsung battery settings (once)
 1. **Settings → Apps → Tasker → Battery → Unrestricted.**
 2. **Settings → Apps → KLWP → Battery → Unrestricted.**
 3. **Settings → Battery → Background usage limits → Never sleeping apps → +** → add **Tasker** and **KLWP**.
 
-Samsung stops background apps aggressively. If you skip this, prices will stop updating after a while.
+The update runs at night, so Samsung must not put Tasker to sleep.
 
-## Part B — Install the wallpaper (KLWP)
+## Part B — Wallpaper (KLWP)
+1. Open **KLWP** → menu **☰** → **Load preset** → import/folder icon → pick **NEXUS.klwp**.
+2. Tap **Save 💾** (top right). If asked, set it as the **Home screen** wallpaper.
+3. Allow **Location** when asked (needed for weather). Otherwise: KLWP menu → Settings → Location.
+4. KLWP menu → Settings → **Clock mode → Automatic** (follows your phone's 12/24-hour setting).
 
-1. Open **KLWP**.
-2. Tap the **menu** (☰, top left) → **Load preset** → tap the **import / folder icon** → pick **NEXUS.klwp** from Downloads.
-3. Tap the **Save** icon (💾, top right).
-4. If KLWP asks to set the live wallpaper, choose **Home screen**.
-5. Weather: allow KLWP **Location** when asked. If it doesn't ask, go to KLWP **menu → Settings → Location**.
-6. Clock: KLWP **menu → Settings → Clock mode → Automatic** (follows your phone's 12/24-hour setting).
+You should see the clock, the date, the weather, empty stock rows and three buttons.
+The wallpaper is set up for **3 Nova pages** and stays the same on each page.
 
-You should now see the clock, the date, the 5-day weather and three buttons. The stock area says
-"Waiting for stock data from Tasker". That's expected until Part C is done.
+> If KLWP says the file isn't valid, stop and send me a screenshot.
 
-> If KLWP says the file is not valid, stop and send me a screenshot. I have a backup plan.
+## Part C — Stock updater (Tasker)
+1. Open **Tasker**. The switch at the top must be **on**.
+2. **Long-press the house icon** (bottom left) → **Import Project** → pick **NEXUS.prj.xml**.
+3. Add your Massive key (see API-SETUP.md): **VARS** tab → **+** → `%NexusKey` → ✓ → tap it → paste the key → ✓.
+4. **TASKS** tab → **NEXUS_Update_Market** → **▶**. Wait ~10 seconds (only IWM for now).
+5. Look at your home screen: the IWM row shows a close price and change, and the chart has an orange line.
+   The bottom right shows **● Close of** *(the last trading day)*.
 
-## Part C — Install the stock updater (Tasker)
+**Check:** compare IWM's close with Google Finance for that same day. It should match to the cent.
 
-1. Open **Tasker**. Make sure the switch at the top is **on**.
-2. **Long-press the house icon** at the bottom-left → **Import Project** → pick **NEXUS.prj.xml**.
-   A new **NEXUS** tab appears at the bottom.
-3. Add your free API key from twelvedata.com:
-   - Open the **VARS** tab → tap **+**.
-   - Name: `%NexusKey` → tap ✓.
-   - Tap the new **%NexusKey** row → paste your key as the value → ✓.
-4. Open the **TASKS** tab → tap **NEXUS Refresh** → tap **▶ (play)** at the bottom.
-   Wait about **1½ minutes**. There's a planned 61-second pause to stay within the free plan's limit.
-5. Go to your home screen. The prices, the chart and the "Updated" time should now appear.
+## Part D — Turn on all five stocks (after IWM is confirmed)
+Tasker → **VARS** → **+** → `%NexusSymbols` → value `IWM,SPY,QQQ,SOXL,SPCX` → run **NEXUS_Update_Market** again.
+It takes about a minute (13-second pauses between the 5 requests, because of the free plan's limit).
 
-From then on it updates on its own, every 5 minutes while your screen is on.
+## Optional — Manual refresh button on the home screen
+Long-press an empty spot → **Widgets** → **Tasker** → **Task Shortcut** → drag it to a page → pick **NEXUS_Update_Market**.
 
-> Your key stays inside Tasker on your phone. It isn't in the wallpaper file, the Tasker file, or this project.
+## Part E — Nova
+- Keep the dashboard area free of icons and widgets.
+- The wallpaper has its own **Phone / Messages / All apps** buttons, so you can hide Nova's dock:
+  Nova Settings → Dock → off.
 
-## Part D — Nova Launcher
-
-- Remove widgets and icons from the page where you want the dashboard.
-- Optional: the wallpaper has its own **Phone / Messages / All apps** buttons, so you can hide Nova's dock:
-  **Nova Settings → Dock → Dock (off)**.
-
-## How it saves battery
-
-- Stock checks only run while the **screen is on**. Nothing runs with the screen off.
-- During US market hours (9:30–16:00 New York time, Mon–Fri): prices every 5 minutes, chart once an hour.
-- Outside market hours: at most one check every 3 hours, to pick up closing prices.
-- Free data plan use: about 425 of the 800 daily requests on a busy day.
+## What runs in the background
+Once an hour Tasker checks the time (no internet). The download happens **once a day after 00:15 New York time**:
+5 small requests, then KLWP updates. Nothing else runs.

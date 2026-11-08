@@ -1,50 +1,39 @@
 # Stock data configuration
 
-## Symbols
-
-`IWM, SPY, QQQ, SOXL, SPCX`, in this order (the order also sets the chart colors).
-
-All five were checked against Twelve Data's symbol search on 8 Nov 2026:
-
-| Symbol | Instrument | Listing used |
+## Symbols and colors
+| Row / line | Symbol | Line color |
 |---|---|---|
-| IWM | iShares Russell 2000 ETF | NYSE Arca, USD |
-| SPY | SPDR S&P 500 ETF Trust | NYSE Arca, USD |
-| QQQ | Invesco QQQ Trust | NASDAQ, USD |
-| SOXL | Direxion Daily Semiconductor Bull 3X | NYSE Arca, USD |
-| SPCX | Space Exploration Technologies Corp. Class A | NASDAQ, USD |
+| 1 | IWM | Orange `#E88A42` |
+| 2 | SPY | Ink `#252525` |
+| 3 | QQQ | Blue `#75B9D5` |
+| 4 | SOXL | Purple `#8065A9` |
+| 5 | SPCX | Muted gold `#A89060` (green and red are reserved for up/down) |
 
-Rows from a non-USD listing are rejected. If one appears, that symbol keeps its last good value and `%NexusMsg` names it.
+**Proof of concept:** only **IWM** is fetched until you've confirmed it on the phone.
+To switch on all five, set the Tasker variable `%NexusSymbols` = `IWM,SPY,QQQ,SOXL,SPCX`. No new files are needed.
 
-To change symbols (optional): in Tasker VARS, create `%NexusSymbols` = `AAA,BBB,CCC,DDD,EEE` (max 5).
-The wallpaper legend and colors follow the same order.
+## Provider: Massive Stocks Basic (end of day)
+Request (one per symbol):
+`GET https://api.massive.com/v2/aggs/ticker/{SYM}/range/1/day/{today−14d}/{today}?adjusted=true&sort=asc&limit=50`
+with header `Authorization: Bearer %NexusKey`.
 
-## Data source
+- **Close** = the latest completed session's close.
+- **Daily $ change** = last close − previous close. **Daily %** = that ÷ previous close × 100.
+- **Chart** = the latest 5 sessions, each line as `(close / first close − 1) × 100`. A missing session repeats the previous close.
+- The dates are New York trading dates (Massive daily bars start at midnight ET).
 
-[Twelve Data](https://twelvedata.com), free plan: 800 credits per day and 8 per minute. Each request costs 1 credit per symbol.
+## Schedule
+- Tasker profile "NEXUS Daily 00:15 New York" checks once an hour (a few milliseconds of work).
+  It downloads only at the **first check after 00:15 New York time** each day, so it works whatever time zone your phone uses.
+- Manual refresh: run **NEXUS_Update_Market** with ▶ in Tasker, or from a home-screen Task Shortcut.
+- At most 5 requests per batch, 13 s apart, and no new batch within 65 s.
 
-| Request | When | Credits |
-|---|---|---|
-| `/quote` for 5 symbols (price, $ change, % change) | every 5 min in market hours, screen on | 5 |
-| `/time_series` 1h bars, last 45 (5 trading days) | hourly in market hours | 5 |
-| either | outside market hours: at most every 3 h | 5 |
-
-The two requests are 61 s apart, which keeps each minute within the limit.
-The worst-case day uses about 425 credits.
-
-## Values sent to KLWP (Kustom Tasker plugin)
-
-| KLWP formula | Content |
+## Values sent to KLWP (Kustom Tasker plugin → `$br(tasker, name)$`)
+| Variable | Content |
 |---|---|
-| `$br(tasker, nx_q)$` | `SYM;PRICE;CHG;PCT;DIR` × 5, joined by `|`. DIR is `1`, `-1` or `0` |
-| `$br(tasker, nx_chart)$` | 6 SVG paths in a 0–100 box joined by `|` (5 series + the 0 % line) |
-| `$br(tasker, nx_meta)$` | `TS|STATE|UPDATED|YMAX|YMIN|ZEROY|D1|D2|D3|D4|D5|MSG` |
+| `nx_q` | 5 rows `SYM;CLOSE;CHG;PCT;DIR` joined by `|` (DIR = `1`, `-1`, `0`) |
+| `nx_chart` | 6 SVG paths in a 0–100 box joined by `|`: 5 lines + the 0 % line |
+| `nx_meta` | `TS|STATE|UPDATED|YMAX|YMIN|ZEROY|D1..D5|MSG|SESSION` |
 
-`STATE` is `OPEN`, `CLOSED` or `ERROR`. `TS` is the Unix time of the last good prices. KLWP compares it with
-`df(S)` to show **Stale** after 20 minutes, so this works even if Tasker has stopped.
-
-## Chart math
-
-Each series is normalized to its first bar in the window: `(close / first_close − 1) × 100`.
-Bars are aligned by timestamp, and a missing bar repeats the previous value.
-The y-range is rounded to a tidy value (0.5, 1, 2, 2.5, 5, 10 … %).
+KLWP formulas use lowercase `tasker`, which is the documented form: `$br(tasker, nx_q)$`.
+`STATE` is `EOD` or `ERROR`. KLWP shows **Stale** when `df(S) − TS` is over 36 hours.

@@ -31,10 +31,23 @@ CW = W - 2 * M               # content width (640)
 C = {  # palette, #AARRGGBB as KLWP stores it
     "bg": "#FFF5F1E8", "text": "#FF252525", "accent": "#FFE88A42",
     "secondary": "#FF75B9D5", "pos": "#FF39845B", "neg": "#FFDC665D",
-    "muted": "#FF8A8478", "rule": "#FFD9D2C3", "clear": "#00000000",
+    "muted": "#FF8A8478", "purple": "#FF8065A9", "rule": "#FFD9D2C3", "clear": "#00000000",
 }
 SYMBOLS = ["IWM", "SPY", "QQQ", "SOXL", "SPCX"]
-SERIES = ["#FFE88A42", "#FF252525", "#FF75B9D5", "#FF8C6BB1", "#FFA89060"]
+SERIES = ["#FFE88A42", "#FF252525", "#FF75B9D5", "#FF8065A9", "#FFA89060"]  # IWM SPY QQQ SOXL SPCX
+
+# Preview sample: what Tasker really sent for IWM (klwp/sample_iwm.json, built by
+# tasker/make_sample.js from a real Massive response). Used only for preview.html.
+try:
+    _S = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "sample_iwm.json")))
+except Exception:
+    _S = None
+def sq(i, f):
+    return _S["nx_q"].split("|")[i].split(";")[f] if _S else ["--.--"] * 5
+def sm(k):
+    return _S["nx_meta"].split("|")[k] if _S else ""
+def sc(i):
+    return _S["nx_chart"].split("|")[i] if _S else "M 0,0"
 
 FONT_FILES = {
     "regular": "Inter-Regular.otf", "medium": "Inter-Medium.otf",
@@ -65,7 +78,7 @@ def _pos(mod, x, y, anchor):
     mod["position_padding_top"] = float(y)
 
 def text(title, expr, x, y, size, fkey, color, anchor="TOPLEFT",
-         color_formula=None, sample=None, top_formula=None, visible=None):
+         color_formula=None, sample=None, top_formula=None, visible=None, pcolor=None):
     m = {"internal_type": "TextModule", "internal_title": title,
          "text_expression": expr, "text_size": float(size),
          "text_family": font(fkey), "paint_color": color}
@@ -79,7 +92,7 @@ def text(title, expr, x, y, size, fkey, color, anchor="TOPLEFT",
         toggles["config_visible"] = 10; formulas["config_visible"] = visible
     if toggles:
         m["internal_toggles"] = toggles; m["internal_formulas"] = formulas
-    preview.append(("text", dict(x=x, y=y, size=size, f=fkey, color=color,
+    preview.append(("text", dict(x=x, y=y, size=size, f=fkey, color=pcolor or color,
                                  anchor=anchor, s=sample if sample is not None else expr)))
     return m
 
@@ -251,13 +264,15 @@ def stocks():
     y0 = 748
     items = [
         text("Label", "WATCHLIST", M, y0, 19, "semibold", C["muted"]),
+        text("Label eod", "END OF DAY", M, y0, 19, "semibold", C["muted"], anchor="TOPRIGHT"),
         text("H symbol", "SYMBOL", M, y0 + 36, 18, "semibold", C["muted"]),
-        text("H price", "PRICE", 340, y0 + 36, 18, "semibold", C["muted"], anchor="TOPRIGHT"),
+        text("H price", "CLOSE", 340, y0 + 36, 18, "semibold", C["muted"], anchor="TOPRIGHT"),
         text("H chg", "CHG $", 180, y0 + 36, 18, "semibold", C["muted"], anchor="TOPRIGHT"),
         text("H pct", "CHG %", M, y0 + 36, 18, "semibold", C["muted"], anchor="TOPRIGHT"),
     ]
     color = lambda i: (f'$if({NOQ}, "{C["muted"]}", {Q(i, 4)}>0, "{C["pos"]}", '
                        f'{Q(i, 4)}<0, "{C["neg"]}", "{C["muted"]}")$')
+    pc = lambda i: {"1": C["pos"], "-1": C["neg"]}.get(sq(i, 4), C["muted"])
     for i, sym in enumerate(SYMBOLS):
         y = y0 + 72 + 44 * i
         items += [
@@ -265,13 +280,13 @@ def stocks():
             circle(f"Dot {i}", M, y + 15, 16, SERIES[i]),
             text(f"Symbol {i}", f'$if({NOQ}, "{sym}", {Q(i, 0)})$', M + 28, y + 7, 27, "bold", C["text"], sample=sym),
             text(f"Price {i}", f'$if({NOQ}, "--.--", {Q(i, 1)})$', 340, y + 7, 27, "regular", C["text"],
-                 anchor="TOPRIGHT", sample="--.--"),
+                 anchor="TOPRIGHT", sample=sq(i, 1)),
             text(f"Change {i}",
-                 f'$if({NOQ}, "--.--", {Q(i, 4)}<0, "▼ " + {Q(i, 2)}, "▲ " + {Q(i, 2)})$',
+                 f'$if({NOQ}, "--.--", {Q(i, 4)}<0, "▼ " + {Q(i, 2)}, {Q(i, 4)}>0, "▲ " + {Q(i, 2)}, {Q(i, 2)})$',
                  180, y + 7, 27, "semibold", C["muted"], anchor="TOPRIGHT",
-                 color_formula=color(i), sample="▲ +-.--" if i < 3 else "▼ −-.--"),
+                 color_formula=color(i), pcolor=pc(i), sample=("▼ " if sq(i, 4) == "-1" else "▲ ") + sq(i, 2) if sq(i, 4) != "0" else sq(i, 2)),
             text(f"Percent {i}", f'$if({NOQ}, "--.--%", {Q(i, 3)})$', M, y + 7, 27, "semibold", C["muted"],
-                 anchor="TOPRIGHT", color_formula=color(i), sample="+-.--%" if i < 3 else "−-.--%"),
+                 anchor="TOPRIGHT", color_formula=color(i), pcolor=pc(i), sample=sq(i, 3)),
         ]
     return items
 
@@ -287,26 +302,26 @@ def chart():
     y0 = 1086
     px, py, pw, ph = M + 52, y0 + 40, CW - 52, 184
     items = [
-        text("Label", "5-DAY PERFORMANCE", M, y0, 19, "semibold", C["muted"]),
-        text("Label unit", "% FROM START", M, y0, 19, "semibold", C["muted"], anchor="TOPRIGHT"),
+        text("Label", "LAST 5 SESSIONS", M, y0, 19, "semibold", C["muted"]),
+        text("Label unit", "% FROM FIRST CLOSE", M, y0, 19, "semibold", C["muted"], anchor="TOPRIGHT"),
         rect("Grid top", px, py, pw, 2, C["rule"]),
         rect("Grid bottom", px, py + ph, pw, 2, C["rule"]),
         path("Zero line", px, py, pw, ph, "#FFBDB5A5", f'$tc(split, br(tasker, nx_chart), "|", 5)$',
-             stroke=2, sample="M 0,50 L 100,50"),
-        text("Y max", f'$if({NOMETA}, "", {MT(3)})$', M, py - 9, 17, "regular", C["muted"], sample="+2%"),
-        text("Y min", f'$if({NOMETA}, "", {MT(4)})$', M, py + ph - 9, 17, "regular", C["muted"], sample="−2%"),
-        text("Y zero", f'$if({NOMETA}, "", "0%")$', M, py + ph / 2 - 9, 17, "regular", C["muted"],
+             stroke=2, sample=sc(5) if _S else "M 0,50 L 100,50"),
+        text("Y max", f'$if({NOMETA}, "", {MT(3)})$', M, py - 9, 17, "regular", C["muted"], sample=sm(3)),
+        text("Y min", f'$if({NOMETA}, "", {MT(4)})$', M, py + ph - 9, 17, "regular", C["muted"], sample=sm(4)),
+        text("Y zero", f'$if({NOMETA}, "", "0%")$', M, (py - 9 + ph * float(sm(5)) / 100) if _S else py + ph / 2 - 9, 17, "regular", C["muted"],
              top_formula=f'$if({NOMETA}, {py + ph / 2 - 9}, {py - 9} + {ph} * {MT(5)} / 100)$', sample="0%"),
     ]
     for i in range(5):
         items.append(path(f"Line {SYMBOLS[i]}", px, py, pw, ph, SERIES[i],
                           f'$tc(split, br(tasker, nx_chart), "|", {i})$',
-                          stroke=4 if i != 1 else 3.2, sample=SAMPLE_PATHS[i]))
+                          stroke=4 if i != 1 else 3.2, sample=sc(i) if _S else SAMPLE_PATHS[i]))
     for k in range(5):
         bw = pw / 5
         items.append(box(f"Chart day {k}", px + bw * k, py + ph + 12, bw, 24, lambda k=k, bw=bw: [
             ctext(f"Day label {k}", f'$if({NOMETA}, "", {MT(6 + k)})$', bw, 0, 17, "regular", C["muted"],
-                  sample=["Mon", "Tue", "Wed", "Thu", "Fri"][k])]))
+                  sample=sm(6 + k) if _S else ["Mon", "Tue", "Wed", "Thu", "Fri"][k])]))
     waiting = box("Chart waiting", px, py + ph / 2 - 16, pw, 32, lambda: [
         ctext("Waiting", "Waiting for stock data from Tasker", pw, 0, 22, "medium", C["muted"], sample="")])
     waiting["internal_toggles"] = {"config_visible": 10}
@@ -320,15 +335,16 @@ def chart():
                   text(f"Legend {i}", sym, x + 32, ly, 20, "bold", C["text"])]
     # footer
     fy = y0 + 300
-    status = (f'$if({NOMETA}, "Not connected yet", {MT(1)}="ERROR", "● Offline · last data", '
-              f'{MT(1)}="OPEN" & df(S) - {MT(0)} > 1200, "● Stale", {MT(1)}="OPEN", "● Live", "Market closed")$')
+    # End-of-day data only: never labelled "live". Stale = no successful update for 36 h.
+    status = (f'$if({NOMETA}, "Not connected yet", {MT(1)}="ERROR", "● Error · showing last data", '
+              f'df(S) - {MT(0)} > 129600, "● Stale · close of " + {MT(12)}, "● Close of " + {MT(12)})$')
     status_c = (f'$if({NOMETA}, "{C["muted"]}", {MT(1)}="ERROR", "{C["neg"]}", '
-                f'{MT(1)}="OPEN" & df(S) - {MT(0)} > 1200, "{C["accent"]}", {MT(1)}="OPEN", "{C["pos"]}", "{C["muted"]}")$')
+                f'df(S) - {MT(0)} > 129600, "{C["accent"]}", "{C["pos"]}")$')
     items += [
         text("Updated", f'$if({NOMETA}, "Updated --:--", "Updated " + {MT(2)})$', M, fy, 19, "regular",
-             C["muted"], sample="Updated --:--"),
+             C["muted"], sample=("Updated " + sm(2)) if _S else "Updated --:--"),
         text("Status", status, M, fy, 19, "semibold", C["muted"], anchor="TOPRIGHT",
-             color_formula=status_c, sample="● Live"),
+             color_formula=status_c, pcolor=C["pos"] if _S else None, sample=("● Close of " + sm(12)) if _S else "Not connected yet"),
     ]
     return items
 
@@ -373,7 +389,7 @@ def build():
             "author": "NEXUS", "email": "", "archive": "",
             "features": "LOCATION WEATHER", "release": 376417910,
             "locked": False, "pflags": 0,
-            "width": 1080, "height": 2340, "xscreens": 0, "yscreens": 0,
+            "width": 1080, "height": 2340, "xscreens": 2, "yscreens": 0,  # 3 Nova pages
         },
         "preset_root": root,
     }

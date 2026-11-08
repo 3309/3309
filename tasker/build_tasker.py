@@ -7,32 +7,38 @@ The XML layout copies real Tasker exports (Tasker 6.x): the HTTP Request action
 (code 339), JavaScriptlet (129), Wait (30), Display State context (123), a
 5-minute Time context, and the KLWP "Kustom Variable" plugin action
 (org.kustom.wallpaper / EditVarActivity, code 703953103).
+Task: NEXUS_Update_Market. Profile: hourly check, fetches once a day after 00:15 New York.
 
 Your API key is NOT in this file. Tasker reads it from the global variable
-%NexusKey, which you create once in Tasker's VARS tab.
+%NexusKey (created once in Tasker's VARS tab) and sends it only as the HTTP
+header "Authorization: Bearer ...", never in a URL.
 """
 import os
 from xml.sax.saxutils import escape
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-LIB = open(os.path.join(HERE, "nexus.js"), encoding="utf-8").read()
+LIB_FULL = open(os.path.join(HERE, "nexus.js"), encoding="utf-8").read()
+# Embedded copy without comment-only lines and indentation (smaller Tasker file).
+LIB = "// NEXUS library - source: tasker/nexus.js\n" + "\n".join(
+    l.strip() for l in LIB_FULL.splitlines() if l.strip() and not l.strip().startswith("//"))
 CDATE = 1793990000000
 
+# %caller1 starts with "profile" when the schedule runs the task; anything else
+# (the play button, a home-screen shortcut) counts as a manual refresh.
 SNIP_PLAN = """
-var nx_env = NX.taskerEnv();
-var nx_plan = NX.plan(nx_env);
-var do_q = nx_plan.doQ ? "1" : "0";
-var do_c = nx_plan.doC ? "1" : "0";
-var do_w = nx_plan.wait ? "1" : "0";
-var nx_qurl = nx_plan.qUrl;
-var nx_curl = nx_plan.cUrl;
-"""
-SNIP_QUOTES = """
-NX.handleQuotes(NX.taskerEnv(), local("http_response_code"), local("http_data"));
-"""
-SNIP_SERIES = """
-NX.handleSeries(NX.taskerEnv(), local("http_response_code"), local("http_data"));
-"""
+var nx_plan = NX.plan(NX.taskerEnv(), !/^profile/.test(String(local("caller1"))));
+var nx_go = nx_plan.go ? "1" : "0";
+var nx_send = (nx_plan.go || nx_plan.reason === "no key") ? "1" : "0";
+var nx_why = nx_plan.reason;
+""" + "".join(
+    f'var nx_d{k} = nx_plan.urls.length >= {k} ? "1" : "0";\n'
+    f'var nx_u{k} = nx_plan.urls[{k - 1}] || "none";\n'
+    f'var nx_s{k} = nx_plan.syms[{k - 1}] || "none";\n' for k in range(1, 6))
+
+def snip_store(k):
+    return f'NX.storeBars(NX.taskerEnv(), local("nx_s{k}"), local("http_response_code"), local("http_data"));\n'
+
+SNIP_FINISH = "NX.finish(NX.taskerEnv());\n"
 
 
 def cond(lhs, op, rhs=""):
@@ -54,7 +60,8 @@ def http(n, url, label, c=""):
             f'\t\t\t<Bundle sr="arg0">\n\t\t\t\t<Vals sr="val"/>\n\t\t\t</Bundle>\n'
             f'\t\t\t<Int sr="arg1" val="0"/>\n'                          # GET
             f'\t\t\t<Str sr="arg2" ve="3">{escape(url)}</Str>\n'
-            + "".join(f'\t\t\t<Str sr="arg{i}" ve="3"/>\n' for i in range(3, 8)) +
+            f'\t\t\t<Str sr="arg3" ve="3">Authorization:Bearer %NexusKey</Str>\n'   # key in a header, not the URL
+            + "".join(f'\t\t\t<Str sr="arg{i}" ve="3"/>\n' for i in range(4, 8)) +
             f'\t\t\t<Int sr="arg8" val="30"/>\n'                         # timeout (s)
             f'\t\t\t<Int sr="arg9" val="0"/>\n'                          # trust any certificate: NO
             f'\t\t\t<Int sr="arg10" val="0"/>\n\t\t\t<Int sr="arg11" val="0"/>\n\t\t\t<Int sr="arg12" val="0"/>\n'
@@ -88,24 +95,30 @@ def kustom(n, name, value, c=""):
 
 def build():
     code = lambda snip: LIB + "\n" + snip
-    acts = [
-        js(0, code(SNIP_PLAN), "Plan: what to fetch now"),
-        http(1, "%nx_qurl&apikey=%NexusKey", "Get prices", cond("%do_q", 0, "1")),
-        js(2, code(SNIP_QUOTES), "Read prices (keeps old data on error)", cond("%do_q", 0, "1")),
-        wait(3, 61, "Pause 61 s (API limit: 8 symbols per minute)", cond("%do_w", 0, "1")),
-        http(4, "%nx_curl&apikey=%NexusKey", "Get 5-day history", cond("%do_c", 0, "1")),
-        js(5, code(SNIP_SERIES), "Build chart (keeps old chart on error)", cond("%do_c", 0, "1")),
-        kustom(6, "nx_q", "%NexusQ", cond("%NexusQ", 12)),
-        kustom(7, "nx_chart", "%NexusChart", cond("%NexusChart", 12)),
-        kustom(8, "nx_meta", "%NexusMeta", cond("%NexusMeta", 12)),
-    ]
+    acts, n = [], 0
+    def add(f, *a):
+        nonlocal n
+        acts.append(f(n, *a)); n += 1
+    add(js, code(SNIP_PLAN), "Plan: scheduled or manual, rate-limit check")
+    for k in range(1, 6):
+        on = cond(f"%nx_d{k}", 0, "1")
+        add(http, f"%nx_u{k}", f"Get daily bars #{k}", on)
+        add(js, code(snip_store(k)), f"Check and store #{k} (keeps old data on error)", on)
+        if k < 5:
+            add(wait, 13, "Pause 13 s (free plan: max 5 requests per minute)", cond(f"%nx_d{k + 1}", 0, "1"))
+    add(js, code(SNIP_FINISH), "Build prices, changes and chart paths", cond("%nx_go", 0, "1"))
+    add(kustom, "nx_q", "%NexusQ", cond("%NexusQ", 12))
+    add(kustom, "nx_chart", "%NexusChart", cond("%NexusChart", 12))
+    add(kustom, "nx_meta", "%NexusMeta", cond("%NexusMeta", 12))
+    # sends run on every run that fetched (or reported a missing key); harmless otherwise
     task = (f'\t<Task sr="task902">\n\t\t<cdate>{CDATE}</cdate>\n\t\t<edate>{CDATE}</edate>\n'
-            f'\t\t<id>902</id>\n\t\t<nme>NEXUS Refresh</nme>\n\t\t<pri>100</pri>\n' + "".join(acts) + '\t</Task>\n')
+            f'\t\t<id>902</id>\n\t\t<nme>NEXUS_Update_Market</nme>\n\t\t<pri>100</pri>\n' + "".join(acts) + '\t</Task>\n')
+    # Hourly check from 00:15 (phone time). The script only fetches at the first
+    # check after 00:15 New York time each day, so it works in any time zone.
     profile = (f'\t<Profile sr="prof901" ve="2">\n\t\t<cdate>{CDATE}</cdate>\n\t\t<edate>{CDATE}</edate>\n'
-               f'\t\t<id>901</id>\n\t\t<mid0>902</mid0>\n\t\t<nme>NEXUS Every 5 min (screen on)</nme>\n'
-               f'\t\t<Time sr="con0">\n\t\t\t<fh>-1</fh>\n\t\t\t<fm>-1</fm>\n\t\t\t<rep>2</rep>\n'
-               f'\t\t\t<repval>5</repval>\n\t\t\t<th>-1</th>\n\t\t\t<tm>-1</tm>\n\t\t</Time>\n'
-               f'\t\t<State sr="con1">\n\t\t\t<code>123</code>\n\t\t\t<Int sr="arg0" val="1"/>\n\t\t</State>\n'
+               f'\t\t<id>901</id>\n\t\t<mid0>902</mid0>\n\t\t<nme>NEXUS Daily 00:15 New York</nme>\n'
+               f'\t\t<Time sr="con0">\n\t\t\t<fh>0</fh>\n\t\t\t<fm>15</fm>\n\t\t\t<rep>1</rep>\n'
+               f'\t\t\t<repval>1</repval>\n\t\t\t<th>23</th>\n\t\t\t<tm>59</tm>\n\t\t</Time>\n'
                f'\t</Profile>\n')
     project = (f'\t<Project sr="proj0" ve="2">\n\t\t<cdate>{CDATE}</cdate>\n\t\t<name>NEXUS</name>\n'
                f'\t\t<pids>901</pids>\n\t\t<tids>902</tids>\n\t</Project>\n')
@@ -118,7 +131,7 @@ def main():
     xml.dom.minidom.parseString(doc.encode())        # well-formed check
     out = os.path.join(HERE, "NEXUS.prj.xml")
     open(out, "w", encoding="utf-8").write(doc)
-    assert "apikey=%NexusKey" in doc and "twelvedata" in doc
+    assert "Bearer %NexusKey" in doc and "api.massive.com" in doc and "apikey" not in doc.lower()
     print(f"wrote {out} ({len(doc)//1024} KB)")
 
 

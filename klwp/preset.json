@@ -12,7 +12,7 @@
     "pflags": 0,
     "width": 1080,
     "height": 2340,
-    "xscreens": 0,
+    "xscreens": 2,
     "yscreens": 0
   },
   "preset_root": {
@@ -932,6 +932,17 @@
       },
       {
         "internal_type": "TextModule",
+        "internal_title": "Label eod",
+        "text_expression": "END OF DAY",
+        "text_size": 19.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-SemiBold.otf",
+        "paint_color": "#FF8A8478",
+        "position_anchor": "TOPRIGHT",
+        "position_padding_right": 40.0,
+        "position_padding_top": 748.0
+      },
+      {
+        "internal_type": "TextModule",
         "internal_title": "H symbol",
         "text_expression": "SYMBOL",
         "text_size": 18.0,
@@ -944,7 +955,7 @@
       {
         "internal_type": "TextModule",
         "internal_title": "H price",
-        "text_expression": "PRICE",
+        "text_expression": "CLOSE",
         "text_size": 18.0,
         "text_family": "kfile://org.kustom.provider/fonts/Inter-SemiBold.otf",
         "paint_color": "#FF8A8478",
@@ -1021,7 +1032,7 @@
       {
         "internal_type": "TextModule",
         "internal_title": "Change 0",
-        "text_expression": "$if(br(tasker, nx_q)=\"\", \"--.--\", tc(split, tc(split, br(tasker, nx_q), \"|\", 0), \";\", 4)<0, \"▼ \" + tc(split, tc(split, br(tasker, nx_q), \"|\", 0), \";\", 2), \"▲ \" + tc(split, tc(split, br(tasker, nx_q), \"|\", 0), \";\", 2))$",
+        "text_expression": "$if(br(tasker, nx_q)=\"\", \"--.--\", tc(split, tc(split, br(tasker, nx_q), \"|\", 0), \";\", 4)<0, \"▼ \" + tc(split, tc(split, br(tasker, nx_q), \"|\", 0), \";\", 2), tc(split, tc(split, br(tasker, nx_q), \"|\", 0), \";\", 4)>0, \"▲ \" + tc(split, tc(split, br(tasker, nx_q), \"|\", 0), \";\", 2), tc(split, tc(split, br(tasker, nx_q), \"|\", 0), \";\", 2))$",
         "text_size": 27.0,
         "text_family": "kfile://org.kustom.provider/fonts/Inter-SemiBold.otf",
         "paint_color": "#FF8A8478",
@@ -1099,7 +1110,7 @@
       {
         "internal_type": "TextModule",
         "internal_title": "Change 1",
-        "text_expression": "$if(br(tasker, nx_q)=\"\", \"--.--\", tc(split, tc(split, br(tasker, nx_q), \"|\", 1), \";\", 4)<0, \"▼ \" + tc(split, tc(split, br(tasker, nx_q), \"|\", 1), \";\", 2), \"▲ \" + tc(split, tc(split, br(tasker, nx_q), \"|\", 1), \";\", 2))$",
+        "text_expression": "$if(br(tasker, nx_q)=\"\", \"--.--\", tc(split, tc(split, br(tasker, nx_q), \"|\", 1), \";\", 4)<0, \"▼ \" + tc(split, tc(split, br(tasker, nx_q), \"|\", 1), \";\", 2), tc(split, tc(split, br(tasker, nx_q), \"|\", 1), \";\", 4)>0, \"▲ \" + tc(split, tc(split, br(tasker, nx_q), \"|\", 1), \";\", 2), tc(split, tc(split, br(tasker, nx_q), \"|\", 1), \";\", 2))$",
         "text_size": 27.0,
         "text_family": "kfile://org.kustom.provider/fonts/Inter-SemiBold.otf",
         "paint_color": "#FF8A8478",
@@ -1177,7 +1188,7 @@
       {
         "internal_type": "TextModule",
         "internal_title": "Change 2",
-        "text_expression": "$if(br(tasker, nx_q)=\"\", \"--.--\", tc(split, tc(split, br(tasker, nx_q), \"|\", 2), \";\", 4)<0, \"▼ \" + tc(split, tc(split, br(tasker, nx_q), \"|\", 2), \";\", 2), \"▲ \" + tc(split, tc(split, br(tasker, nx_q), \"|\", 2), \";\", 2))$",
+        "text_expression": "$if(br(tasker, nx_q)=\"\", \"--.--\", tc(split, tc(split, br(tasker, nx_q), \"|\", 2), \";\", 4)<0, \"▼ \" + tc(split, tc(split, br(tasker, nx_q), \"|\", 2), \";\", 2), tc(split, tc(split, br(tasker, nx_q), \"|\", 2), \";\", 4)>0, \"▲ \" + tc(split, tc(split, br(tasker, nx_q), \"|\", 2), \";\", 2), tc(split, tc(split, br(tasker, nx_q), \"|\", 2), \";\", 2))$",
         "text_size": 27.0,
         "text_family": "kfile://org.kustom.provider/fonts/Inter-SemiBold.otf",
         "paint_color": "#FF8A8478",
@@ -1225,7 +1236,7 @@
         "shape_type": "CIRCLE",
         "shape_width": 16.0,
         "shape_height": 16.0,
-        "paint_color": "#FF8C6BB1",
+        "paint_color": "#FF8065A9",
         "position_anchor": "TOPLEFT",
         "position_padding_left": 40.0,
         "position_padding_top": 967.0
@@ -1255,7 +1266,7 @@
       {
         "internal_type": "TextModule",
         "internal_title": "Change 3",
-        "text_expression": "$if(br(tasker, nx_q)=\"\", \"--.--\", tc(split, tc(split, br(tasker, nx_q), \"|\", 3), \";\", 4)<0, \"▼ \" + tc(split, tc(split, br(tasker, nx_q), \"|\", 3), \";\", 2), \"▲ \" + tc(split, tc(split, br(tasker, nx_q), \"|\", 3), \";\", 2))$",
+        "text_expression": "$if(br(tasker, nx_q)=\"\", \"--.--\", tc(split, tc(split, br(tasker, nx_q), \"|\", 3), \";\", 4)<0, \"▼ \" + tc(split, tc(split, br(tasker, nx_q), \"|\", 3), \";\", 2), tc(split, tc(split, br(tasker, nx_q), \"|\", 3), \";\", 4)>0, \"▲ \" + tc(split, tc(split, br(tasker, nx_q), \"|\", 3), \";\", 2), tc(split, tc(split, br(tasker, nx_q), \"|\", 3), \";\", 2))$",
         "text_size": 27.0,
         "text_family": "kfile://org.kustom.provider/fonts/Inter-SemiBold.otf",
         "paint_color": "#FF8A8478",
@@ -1333,7 +1344,7 @@
       {
         "internal_type": "TextModule",
         "internal_title": "Change 4",
-        "text_expression": "$if(br(tasker, nx_q)=\"\", \"--.--\", tc(split, tc(split, br(tasker, nx_q), \"|\", 4), \";\", 4)<0, \"▼ \" + tc(split, tc(split, br(tasker, nx_q), \"|\", 4), \";\", 2), \"▲ \" + tc(split, tc(split, br(tasker, nx_q), \"|\", 4), \";\", 2))$",
+        "text_expression": "$if(br(tasker, nx_q)=\"\", \"--.--\", tc(split, tc(split, br(tasker, nx_q), \"|\", 4), \";\", 4)<0, \"▼ \" + tc(split, tc(split, br(tasker, nx_q), \"|\", 4), \";\", 2), tc(split, tc(split, br(tasker, nx_q), \"|\", 4), \";\", 4)>0, \"▲ \" + tc(split, tc(split, br(tasker, nx_q), \"|\", 4), \";\", 2), tc(split, tc(split, br(tasker, nx_q), \"|\", 4), \";\", 2))$",
         "text_size": 27.0,
         "text_family": "kfile://org.kustom.provider/fonts/Inter-SemiBold.otf",
         "paint_color": "#FF8A8478",
@@ -1367,7 +1378,7 @@
       {
         "internal_type": "TextModule",
         "internal_title": "Label",
-        "text_expression": "5-DAY PERFORMANCE",
+        "text_expression": "LAST 5 SESSIONS",
         "text_size": 19.0,
         "text_family": "kfile://org.kustom.provider/fonts/Inter-SemiBold.otf",
         "paint_color": "#FF8A8478",
@@ -1378,7 +1389,7 @@
       {
         "internal_type": "TextModule",
         "internal_title": "Label unit",
-        "text_expression": "% FROM START",
+        "text_expression": "% FROM FIRST CLOSE",
         "text_size": 19.0,
         "text_family": "kfile://org.kustom.provider/fonts/Inter-SemiBold.otf",
         "paint_color": "#FF8A8478",
@@ -1459,7 +1470,7 @@
         "paint_color": "#FF8A8478",
         "position_anchor": "TOPLEFT",
         "position_padding_left": 40.0,
-        "position_padding_top": 1209.0,
+        "position_padding_top": 1171.096,
         "internal_toggles": {
           "position_padding_top": 10
         },
@@ -1533,7 +1544,7 @@
         "shape_type": "PATH",
         "shape_width": 588.0,
         "shape_height": 184.0,
-        "paint_color": "#FF8C6BB1",
+        "paint_color": "#FF8065A9",
         "shape_path": "M 0,0",
         "internal_toggles": {
           "shape_path": 10
@@ -1828,7 +1839,7 @@
         "shape_type": "RECT",
         "shape_width": 24.0,
         "shape_height": 6.0,
-        "paint_color": "#FF8C6BB1",
+        "paint_color": "#FF8065A9",
         "shape_corners": 3.0,
         "position_anchor": "TOPLEFT",
         "position_padding_left": 424.0,
@@ -1882,7 +1893,7 @@
       {
         "internal_type": "TextModule",
         "internal_title": "Status",
-        "text_expression": "$if(br(tasker, nx_meta)=\"\", \"Not connected yet\", tc(split, br(tasker, nx_meta), \"|\", 1)=\"ERROR\", \"● Offline · last data\", tc(split, br(tasker, nx_meta), \"|\", 1)=\"OPEN\" & df(S) - tc(split, br(tasker, nx_meta), \"|\", 0) > 1200, \"● Stale\", tc(split, br(tasker, nx_meta), \"|\", 1)=\"OPEN\", \"● Live\", \"Market closed\")$",
+        "text_expression": "$if(br(tasker, nx_meta)=\"\", \"Not connected yet\", tc(split, br(tasker, nx_meta), \"|\", 1)=\"ERROR\", \"● Error · showing last data\", df(S) - tc(split, br(tasker, nx_meta), \"|\", 0) > 129600, \"● Stale · close of \" + tc(split, br(tasker, nx_meta), \"|\", 12), \"● Close of \" + tc(split, br(tasker, nx_meta), \"|\", 12))$",
         "text_size": 19.0,
         "text_family": "kfile://org.kustom.provider/fonts/Inter-SemiBold.otf",
         "paint_color": "#FF8A8478",
@@ -1893,7 +1904,7 @@
           "paint_color": 10
         },
         "internal_formulas": {
-          "paint_color": "$if(br(tasker, nx_meta)=\"\", \"#FF8A8478\", tc(split, br(tasker, nx_meta), \"|\", 1)=\"ERROR\", \"#FFDC665D\", tc(split, br(tasker, nx_meta), \"|\", 1)=\"OPEN\" & df(S) - tc(split, br(tasker, nx_meta), \"|\", 0) > 1200, \"#FFE88A42\", tc(split, br(tasker, nx_meta), \"|\", 1)=\"OPEN\", \"#FF39845B\", \"#FF8A8478\")$"
+          "paint_color": "$if(br(tasker, nx_meta)=\"\", \"#FF8A8478\", tc(split, br(tasker, nx_meta), \"|\", 1)=\"ERROR\", \"#FFDC665D\", df(S) - tc(split, br(tasker, nx_meta), \"|\", 0) > 129600, \"#FFE88A42\", \"#FF39845B\")$"
         }
       },
       {

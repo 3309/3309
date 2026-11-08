@@ -1,28 +1,33 @@
-// NEXUS core logic.
+// NEXUS core logic (Massive Stocks Basic, end-of-day data).
 // Runs inside Tasker "JavaScriptlet" actions (embedded by tasker/build_tasker.py)
 // and in Node for the automated tests (tasker/test/nexus.test.js).
 //
-// Data source: Twelve Data (https://twelvedata.com), free plan.
-// Nothing here contains or logs the API key: Tasker inserts %NexusKey into
-// the HTTP Request URL itself.
+// Data: Massive daily aggregates
+//   GET https://api.massive.com/v2/aggs/ticker/{SYM}/range/1/day/{from}/{to}?adjusted=true&sort=asc
+// The API key is sent by Tasker's HTTP Request action as the header
+// "Authorization: Bearer %NexusKey". It never passes through this code.
 //
-// Values sent to KLWP (all text, see config/stocks.md):
-//   nx_q     "SYM;PRICE;CHG;PCT;DIR|..."     5 rows, fixed order
-//   nx_chart "path0|path1|path2|path3|path4|zeroLine"   SVG paths in a 0-100 box
-//   nx_meta  "TS|STATE|UPDATED|YMAX|YMIN|ZEROY|D1|D2|D3|D4|D5|MSG"
+// Values sent to KLWP (text, see config/stocks.md):
+//   nx_q     "SYM;CLOSE;CHG;PCT;DIR|..."   always 5 rows, fixed display order
+//   nx_chart "p0|p1|p2|p3|p4|zeroLine"      SVG paths in a 0-100 box
+//   nx_meta  "TS|STATE|UPDATED|YMAX|YMIN|ZEROY|D1|D2|D3|D4|D5|MSG|SESSION"
 //
-// Tasker globals used to keep the last good data:
-//   NexusKey (you set it), NexusSymbols (optional override),
-//   NexusQ, NexusQTs, NexusQTry, NexusState, NexusMsg, NexusUpd,
-//   NexusChart, NexusChartMeta, NexusChartTs, NexusChartTry, NexusMeta
+// Tasker globals:
+//   NexusKey      your Massive API key (you create it in the VARS tab)
+//   NexusSymbols  optional: which symbols to fetch (default FETCH_DEFAULT)
+//   NexusBars_SYM last good closes per symbol, "YYYY-MM-DD:close,..."
+//   NexusQ, NexusChart, NexusMeta    last values sent to KLWP
+//   NexusTs, NexusState, NexusMsg, NexusUpd, NexusDay, NexusLastBatch
 var NX = (function () {
   "use strict";
 
-  var DEFAULT_SYMBOLS = "IWM,SPY,QQQ,SOXL,SPCX";
-  var MINUS = "\u2212";
-  var BASE = "https://api.twelvedata.com";
+  var DISPLAY = ["IWM", "SPY", "QQQ", "SOXL", "SPCX"];   // rows / colors in KLWP
+  var FETCH_DEFAULT = "IWM";                             // proof of concept: IWM only
+  var BASE = "https://api.massive.com";
+  var MINUS = "−";
+  var DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-  // ------------------------------------------------------------ small helpers
   function isSet(v) {
     return v !== undefined && v !== null && String(v) !== "" && String(v).charAt(0) !== "%";
   }
@@ -30,167 +35,122 @@ var NX = (function () {
   function num(v) { var n = parseFloat(v); return isFinite(n) ? n : NaN; }
   function clean(s) { return String(s).replace(/[|;\n\r]/g, " ").slice(0, 120); }
 
-  function symbolsFrom(env) {
-    var raw = str(env.global("NexusSymbols")) || DEFAULT_SYMBOLS;
+  function fetchList(env) {
+    var raw = str(env.global("NexusSymbols")) || FETCH_DEFAULT;
     return raw.split(",").map(function (s) { return s.trim().toUpperCase(); })
-      .filter(function (s) { return /^[A-Z0-9.]{1,10}$/.test(s); }).slice(0, 5);
+      .filter(function (s) { return DISPLAY.indexOf(s) >= 0; });
   }
 
-  function signed(v, digits, suffix) {
-    var s = Math.abs(v).toFixed(digits);
-    if (Number(s) === 0) return "0." + "000000".slice(0, digits) + (suffix || "");
-    return (v > 0 ? "+" : MINUS) + s + (suffix || "");
-  }
-
-  function fmtPrice(p) { return p.toFixed(2); }
-
-  // ------------------------------------------------------------ New York clock
+  // ------------------------------------------------------------ New York date/time
   function nyParts(ms) {
     var f = new Intl.DateTimeFormat("en-US", {
-      timeZone: "America/New_York", weekday: "short", year: "numeric", month: "2-digit",
-      day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23"
+      timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", hourCycle: "h23"
     });
-    var out = {};
-    f.formatToParts(new Date(ms)).forEach(function (p) { out[p.type] = p.value; });
-    var h = parseInt(out.hour, 10) % 24;
-    return { wd: out.weekday, h: h, m: parseInt(out.minute, 10),
-             ymd: out.year + "-" + out.month + "-" + out.day };
+    var o = {};
+    f.formatToParts(new Date(ms)).forEach(function (p) { o[p.type] = p.value; });
+    return { ymd: o.year + "-" + o.month + "-" + o.day, h: parseInt(o.hour, 10) % 24, m: parseInt(o.minute, 10) };
   }
-
-  // Regular session 9:30-16:00 ET, Mon-Fri, with a small margin either side.
-  // Holidays are handled by the API's is_market_open flag (state CLOSED).
-  function inMarketWindow(ms) {
-    var p = nyParts(ms);
-    if (p.wd === "Sat" || p.wd === "Sun") return false;
-    var t = p.h * 60 + p.m;
-    return t >= 9 * 60 + 25 && t <= 16 * 60 + 15;
+  function addDays(ymd, n) {
+    var d = new Date(ymd + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n);
+    return d.toISOString().slice(0, 10);
   }
-
+  function dayName(ymd) { return DAYS[new Date(ymd + "T12:00:00Z").getUTCDay()]; }
+  function sessionLabel(ymd) {
+    var d = new Date(ymd + "T12:00:00Z");
+    return DAYS[d.getUTCDay()] + " " + d.getUTCDate() + " " + MONTHS[d.getUTCMonth()];
+  }
   function updatedLabel(ms) {
     var d = new Date(ms);
-    var day = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()];
-    var time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-    return day + " " + time;
+    return DAYS[d.getDay()] + " " + d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   }
 
   // ------------------------------------------------------------ planning
-  // Decides which requests to make this run. Free plan: 800 credits/day and
-  // 8 credits/minute; each request below costs 1 credit per symbol (5).
-  function plan(env) {
-    var now = env.now();
-    var nowS = Math.floor(now / 1000);
-    var syms = symbolsFrom(env);
-    var r = { doQ: false, doC: false, wait: false, qUrl: "", cUrl: "", reason: "" };
-
+  // Scheduled runs (Tasker profile, hourly check): fetch once per New York day,
+  // at the first check after 00:15 ET. Manual runs: always, unless the previous
+  // batch started less than 65 s ago (free plan: 5 requests per minute).
+  function plan(env, manual) {
+    var now = env.now(), nowS = Math.floor(now / 1000);
+    var ny = nyParts(now);
+    var r = { go: false, urls: [], syms: [], reason: "" };
     if (!isSet(env.global("NexusKey"))) {
       env.setGlobal("NexusState", "ERROR");
       env.setGlobal("NexusMsg", "API key missing: add NexusKey in Tasker VARS");
-      publish(env);
-      r.reason = "no key";
-      return r;
+      publish(env); r.reason = "no key"; return r;
     }
-
-    var open = inMarketWindow(now);
-    var lastQTry = num(env.global("NexusQTry")) || 0;
-    var lastQ = num(env.global("NexusQTs")) || 0;
-    var lastCTry = num(env.global("NexusChartTry")) || 0;
-    var lastC = num(env.global("NexusChartTs")) || 0;
-
-    if (open) {
-      r.doQ = nowS - lastQTry >= 120;                     // profile fires every 5 min
-      r.doC = nowS - lastC >= 3600 && nowS - lastCTry >= 600;
-    } else {
-      // outside market hours: pick up closing prices, then rest
-      r.doQ = nowS - lastQ >= 3 * 3600 && nowS - lastQTry >= 1800;
-      r.doC = nowS - lastC >= 3 * 3600 && nowS - lastCTry >= 1800;
+    var last = num(env.global("NexusLastBatch")) || 0;
+    if (nowS - last < 65) { r.reason = "too soon (rate limit)"; return r; }
+    if (!manual) {
+      var after = ny.h * 60 + ny.m >= 15;
+      var done = str(env.global("NexusDay")) === ny.ymd;
+      if (!after || done) { r.reason = done ? "already updated today" : "before 00:15 ET"; return r; }
     }
-    if (!isSet(env.global("NexusQ")) && nowS - lastQTry >= 60) r.doQ = true;
-    if (!isSet(env.global("NexusChart")) && nowS - lastCTry >= 60) r.doC = true;
-
-    r.wait = r.doQ && r.doC;                               // stay under 8 credits/minute
-    var s = syms.join(",");
-    r.qUrl = BASE + "/quote?symbol=" + s;
-    r.cUrl = BASE + "/time_series?symbol=" + s + "&interval=1h&outputsize=45&order=asc";
-    if (r.doQ) env.setGlobal("NexusQTry", String(nowS));
-    if (r.doC) env.setGlobal("NexusChartTry", String(nowS));
-    r.reason = (open ? "market window" : "outside market hours");
+    var from = addDays(ny.ymd, -14), to = ny.ymd;
+    r.syms = fetchList(env);
+    r.urls = r.syms.map(function (s) {
+      return BASE + "/v2/aggs/ticker/" + s + "/range/1/day/" + from + "/" + to + "?adjusted=true&sort=asc&limit=50";
+    });
+    r.go = r.urls.length > 0;
+    if (r.go) { env.setGlobal("NexusLastBatch", String(nowS)); env.setGlobal("NexusErrs", ""); }
+    r.reason = manual ? "manual" : "scheduled";
     return r;
   }
 
-  // ------------------------------------------------------------ responses
-  function parseResponse(code, body) {
+  // ------------------------------------------------------------ one response
+  function parseBars(code, body) {
     if (!isSet(body)) return { error: "No response (offline?)" };
     var j;
     try { j = JSON.parse(body); } catch (e) { return { error: "Bad response from server" }; }
-    if (j && j.status === "error") {
-      var c = j.code || code;
-      if (c === 401 || c === 403) return { error: "API key rejected (" + c + ")" };
-      if (c === 429) return { error: "Rate limit reached, will retry" };
-      return { error: "API error " + (c || "") };
+    var st = j && j.status;
+    if (st === "ERROR" || st === "NOT_AUTHORIZED" || (j && j.error && !j.results)) {
+      var m = String(j.error || j.message || "");
+      if (/api key/i.test(m)) return { error: "API key problem: " + m };
+      if (String(code) === "429" || /exceeded|limit/i.test(m)) return { error: "Rate limit reached" };
+      return { error: "API error: " + (m || st) };
     }
     if (isSet(code) && String(code) !== "200") return { error: "HTTP " + code };
-    return { json: j };
+    if (st !== "OK" && st !== "DELAYED") return { error: "Unexpected status " + st };
+    var bars = (j.results || []).filter(function (b) { return num(b.c) > 0 && num(b.t) > 0; })
+      .map(function (b) { return { d: nyParts(num(b.t)).ymd, c: num(b.c) }; })
+      .sort(function (a, b) { return a.d < b.d ? -1 : 1; });
+    if (!bars.length) return { error: "No bars returned" };
+    return { ticker: String(j.ticker || "").toUpperCase(), bars: bars.slice(-6) };
   }
 
-  // Twelve Data returns a single object for one symbol and an object keyed by
-  // symbol for several.
-  function bySymbol(j, syms) {
-    if (j && typeof j.symbol === "string") { var o = {}; o[j.symbol.toUpperCase()] = j; return o; }
-    if (j && j.meta && j.meta.symbol) { var m = {}; m[j.meta.symbol.toUpperCase()] = j; return m; }
-    return j || {};
-  }
-
-  function oldRows(env) {
-    var map = {};
-    str(env.global("NexusQ")).split("|").forEach(function (row) {
-      var f = row.split(";");
-      if (f.length === 5 && f[0]) map[f[0]] = row;
-    });
-    return map;
-  }
-
-  function quoteRow(sym, q) {
-    if (!q || q.status === "error") return null;
-    if (q.currency && q.currency !== "USD") return null;     // wrong listing
-    var price = num(q.close), chg = num(q.change), pct = num(q.percent_change);
-    if (!(price > 0)) return null;
-    if (!isFinite(chg)) { var prev = num(q.previous_close); chg = prev > 0 ? price - prev : NaN; }
-    if (!isFinite(pct)) { var pv = price - chg; pct = pv > 0 ? chg / pv * 100 : NaN; }
-    if (!isFinite(chg) || !isFinite(pct)) return null;
-    var dir = Number(chg.toFixed(2)) > 0 ? "1" : Number(chg.toFixed(2)) < 0 ? "-1" : "0";
-    return [sym, fmtPrice(price), signed(chg, 2), signed(pct, 2, "%"), dir].join(";");
-  }
-
-  function handleQuotes(env, code, body) {
-    var syms = symbolsFrom(env);
-    var p = parseResponse(code, body);
-    if (p.error) { fail(env, p.error); return false; }
-    var map = bySymbol(p.json, syms), old = oldRows(env);
-    var rows = [], good = 0, missing = [], open = false;
-    syms.forEach(function (s) {
-      var q = map[s];
-      var row = quoteRow(s, q);
-      if (row) { good++; if (q.is_market_open === true || q.is_market_open === "true") open = true; }
-      else { missing.push(s); row = old[s] || [s, "--.--", "--.--", "--.--%", "0"].join(";"); }
-      rows.push(row);
-    });
-    if (!good) { fail(env, "No valid prices in response"); return false; }
-    env.setGlobal("NexusQ", rows.join("|"));
-    env.setGlobal("NexusQTs", String(Math.floor(env.now() / 1000)));
-    env.setGlobal("NexusUpd", updatedLabel(env.now()));
-    env.setGlobal("NexusState", open ? "OPEN" : "CLOSED");
-    env.setGlobal("NexusMsg", missing.length ? "No data for " + missing.join(", ") : "");
-    publish(env);
+  // Called after each HTTP Request. Saves bars only when valid.
+  function storeBars(env, sym, code, body) {
+    var p = parseBars(code, body);
+    if (!p.error && p.ticker && p.ticker !== sym) p = { error: "Wrong ticker in response" };
+    if (p.error) {
+      var errs = str(env.global("NexusErrs"));
+      env.setGlobal("NexusErrs", (errs ? errs + ", " : "") + sym + ": " + p.error);
+      return false;
+    }
+    env.setGlobal("NexusBars_" + sym, p.bars.map(function (b) { return b.d + ":" + b.c; }).join(","));
     return true;
   }
 
-  function fail(env, msg) {
-    env.setGlobal("NexusState", "ERROR");
-    env.setGlobal("NexusMsg", clean(msg));
-    publish(env);      // last good prices/chart are untouched
+  function readBars(env, sym) {
+    return str(env.global("NexusBars_" + sym)).split(",").map(function (x) {
+      var k = x.split(":"); return { d: k[0], c: num(k[1]) };
+    }).filter(function (b) { return /^\d{4}-\d\d-\d\d$/.test(b.d) && b.c > 0; });
   }
 
-  // ------------------------------------------------------------ chart
+  // ------------------------------------------------------------ rows + chart
+  function signed(v, digits, suffix) {
+    var s = Math.abs(v).toFixed(digits);
+    if (Number(s) === 0) return (0).toFixed(digits) + (suffix || "");
+    return (v > 0 ? "+" : MINUS) + s + (suffix || "");
+  }
+  function row(sym, bars) {
+    if (!bars.length) return [sym, "--.--", "--.--", "--.--%", "0"].join(";");
+    var c = bars[bars.length - 1].c;
+    if (bars.length < 2) return [sym, c.toFixed(2), "--.--", "--.--%", "0"].join(";");
+    var p = bars[bars.length - 2].c, chg = c - p, pct = chg / p * 100;
+    var r2 = Number(chg.toFixed(2));
+    return [sym, c.toFixed(2), signed(chg, 2), signed(pct, 2, "%"), r2 > 0 ? "1" : r2 < 0 ? "-1" : "0"].join(";");
+  }
+
   function niceUp(v) {
     var steps = [0.5, 1, 2, 2.5, 5, 10, 15, 20, 25, 30, 40, 50, 75, 100, 150, 200, 300, 500, 1000];
     for (var i = 0; i < steps.length; i++) if (steps[i] >= v * 1.05) return steps[i];
@@ -202,88 +162,85 @@ var NX = (function () {
   }
   function r1(v) { return (Math.round(v * 10) / 10).toString(); }
 
-  function buildChart(seriesBySym, syms) {
-    // seriesBySym: { SYM: [{t:"YYYY-MM-DD HH:MM:SS", c:Number}, ...] }
-    var dates = {};
-    syms.forEach(function (s) { (seriesBySym[s] || []).forEach(function (p) { dates[p.t.slice(0, 10)] = 1; }); });
-    var days = Object.keys(dates).sort().slice(-5);
+  // barsBySym: {SYM: [{d, c}, ...]} ascending. Uses the latest 5 sessions.
+  function buildChart(barsBySym) {
+    var all = {};
+    DISPLAY.forEach(function (s) { (barsBySym[s] || []).forEach(function (b) { all[b.d] = 1; }); });
+    var days = Object.keys(all).sort().slice(-5);
     if (!days.length) return null;
-    var first = days[0];
-    var stamps = {};
-    syms.forEach(function (s) {
-      (seriesBySym[s] || []).forEach(function (p) { if (p.t.slice(0, 10) >= first) stamps[p.t] = 1; });
-    });
-    var ts = Object.keys(stamps).sort();
-    if (ts.length < 2) return null;
-
-    var lines = syms.map(function (s) {
-      var pts = (seriesBySym[s] || []).filter(function (p) { return p.t.slice(0, 10) >= first; })
-        .sort(function (a, b) { return a.t < b.t ? -1 : 1; });
-      if (!pts.length) return null;
-      var base = pts[0].c, j = 0, last = null, out = [];
-      ts.forEach(function (t, i) {
-        while (j < pts.length && pts[j].t <= t) { last = pts[j].c; j++; }   // forward-fill
-        if (last !== null) out.push({ i: i, v: (last / base - 1) * 100 });
+    var lines = DISPLAY.map(function (s) {
+      var map = {}; (barsBySym[s] || []).forEach(function (b) { map[b.d] = b.c; });
+      var base = null, last = null, out = [];
+      days.forEach(function (d, i) {
+        if (map[d] !== undefined) last = map[d];            // missing session: keep previous
+        if (last === null) return;
+        if (base === null) base = last;
+        out.push({ i: i, v: (last / base - 1) * 100 });
       });
       return out;
     });
-
     var maxv = 0, minv = 0;
-    lines.forEach(function (l) { (l || []).forEach(function (p) { maxv = Math.max(maxv, p.v); minv = Math.min(minv, p.v); }); });
+    lines.forEach(function (l) { l.forEach(function (p) { maxv = Math.max(maxv, p.v); minv = Math.min(minv, p.v); }); });
     var hi = niceUp(Math.max(maxv, 0.1)), lo = -niceUp(Math.max(-minv, 0.1));
     var y = function (v) { return 2 + (hi - v) / (hi - lo) * 96; };
-    var x = function (i) { return i / (ts.length - 1) * 100; };
-
+    var n = days.length;
+    var x = function (i) { return n === 1 ? 50 : 10 + i / (n - 1) * 80; };   // points sit under the day labels
     var paths = lines.map(function (l) {
-      if (!l || !l.length) return "M 0,0";
+      if (!l.length) return "M 0,0";
+      if (l.length === 1) return "M " + r1(x(l[0].i)) + "," + r1(y(l[0].v)) + " L " + r1(x(l[0].i) + 0.1) + "," + r1(y(l[0].v));
       return l.map(function (p, k) { return (k ? "L " : "M ") + r1(x(p.i)) + "," + r1(y(p.v)); }).join(" ");
     });
     var zy = y(0);
     paths.push("M 0," + r1(zy) + " L 100," + r1(zy));
-
-    var dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    var labels = days.map(function (d) { return dayNames[new Date(d + "T12:00:00Z").getUTCDay()]; });
+    var labels = days.map(dayName);
     while (labels.length < 5) labels.push("");
-    return {
-      paths: paths,
-      meta: [zy < 12 ? "" : pctLabel(hi), zy > 88 ? "" : pctLabel(lo), r1(zy)].concat(labels)
-    };
+    return { paths: paths, meta: [zy < 12 ? "" : pctLabel(hi), zy > 88 ? "" : pctLabel(lo), r1(zy)].concat(labels),
+             last: days[days.length - 1] };
   }
 
-  function handleSeries(env, code, body) {
-    var syms = symbolsFrom(env);
-    var p = parseResponse(code, body);
-    if (p.error) { env.setGlobal("NexusMsg", clean("Chart not updated: " + p.error)); publish(env); return false; }
-    var map = bySymbol(p.json, syms), series = {}, n = 0;
-    syms.forEach(function (s) {
-      var d = map[s];
-      if (!d || d.status === "error" || !d.values) return;
-      if (d.meta && d.meta.currency && d.meta.currency !== "USD") return;
-      series[s] = d.values.map(function (v) { return { t: v.datetime, c: num(v.close) }; })
-        .filter(function (v) { return v.c > 0 && /^\d{4}-\d\d-\d\d \d\d:\d\d/.test(v.t); });
-      if (series[s].length) n++;
-    });
-    var chart = n ? buildChart(series, syms) : null;
-    if (!chart) { env.setGlobal("NexusMsg", "Chart not updated: no history data"); publish(env); return false; }
-    env.setGlobal("NexusChart", chart.paths.join("|"));
-    env.setGlobal("NexusChartMeta", chart.meta.join("|"));
-    env.setGlobal("NexusChartTs", String(Math.floor(env.now() / 1000)));
+  // Called once after all requests: builds what KLWP shows from the stored bars.
+  function finish(env) {
+    var now = env.now();
+    var errs = str(env.global("NexusErrs"));
+    var wanted = fetchList(env);
+    var barsBySym = {}, have = 0;
+    DISPLAY.forEach(function (s) { barsBySym[s] = readBars(env, s); if (barsBySym[s].length) have++; });
+    var failedAll = wanted.length > 0 && wanted.every(function (s) { return errs.indexOf(s + ":") >= 0; });
+
+    if (!have) {
+      env.setGlobal("NexusState", "ERROR");
+      env.setGlobal("NexusMsg", clean(errs || "No data yet"));
+      publish(env); return false;
+    }
+    if (failedAll) {                     // nothing new: keep everything, flag the error
+      env.setGlobal("NexusState", "ERROR");
+      env.setGlobal("NexusMsg", clean(errs));
+      publish(env); return false;
+    }
+    env.setGlobal("NexusQ", DISPLAY.map(function (s) { return row(s, barsBySym[s]); }).join("|"));
+    var ch = buildChart(barsBySym);
+    env.setGlobal("NexusChart", ch.paths.join("|"));
+    env.setGlobal("NexusChartMeta", ch.meta.join("|"));
+    env.setGlobal("NexusSession", sessionLabel(ch.last));
+    env.setGlobal("NexusTs", String(Math.floor(now / 1000)));
+    env.setGlobal("NexusUpd", updatedLabel(now));
+    env.setGlobal("NexusDay", nyParts(now).ymd);
+    env.setGlobal("NexusState", "EOD");
+    env.setGlobal("NexusMsg", clean(errs ? "Partly updated: " + errs : ""));
     publish(env);
     return true;
   }
 
-  // ------------------------------------------------------------ meta for KLWP
   function publish(env) {
     var cm = str(env.global("NexusChartMeta")).split("|");
     while (cm.length < 8) cm.push("");
-    var meta = [str(env.global("NexusQTs")) || "0", str(env.global("NexusState")) || "ERROR",
+    var meta = [str(env.global("NexusTs")) || "0", str(env.global("NexusState")) || "ERROR",
                 str(env.global("NexusUpd")) || "--:--"].concat(cm.slice(0, 8))
-               .concat([clean(str(env.global("NexusMsg")))]);
+               .concat([clean(str(env.global("NexusMsg"))), str(env.global("NexusSession"))]);
     env.setGlobal("NexusMeta", meta.join("|"));
     return meta;
   }
 
-  // ------------------------------------------------------------ Tasker glue
   function taskerEnv() {
     /* global global, setGlobal */
     return {
@@ -294,10 +251,9 @@ var NX = (function () {
   }
 
   return {
-    DEFAULT_SYMBOLS: DEFAULT_SYMBOLS, nyParts: nyParts, inMarketWindow: inMarketWindow,
-    plan: plan, parseResponse: parseResponse, quoteRow: quoteRow, handleQuotes: handleQuotes,
-    handleSeries: handleSeries, buildChart: buildChart, publish: publish, niceUp: niceUp,
-    signed: signed, taskerEnv: taskerEnv, symbolsFrom: symbolsFrom
+    DISPLAY: DISPLAY, FETCH_DEFAULT: FETCH_DEFAULT, nyParts: nyParts, plan: plan, parseBars: parseBars,
+    storeBars: storeBars, finish: finish, buildChart: buildChart, row: row, publish: publish,
+    niceUp: niceUp, fetchList: fetchList, taskerEnv: taskerEnv
   };
 })();
 
