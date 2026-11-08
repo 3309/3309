@@ -1,0 +1,1849 @@
+<TaskerData sr="" dvi="1" tv="6.3.13">
+	<Profile sr="prof901" ve="2">
+		<cdate>1793990000000</cdate>
+		<edate>1793990000000</edate>
+		<id>901</id>
+		<mid0>902</mid0>
+		<nme>NEXUS check (screen on)</nme>
+		<Time sr="con0">
+			<fh>-1</fh>
+			<fm>-1</fm>
+			<rep>2</rep>
+			<repval>10</repval>
+			<th>-1</th>
+			<tm>-1</tm>
+		</Time>
+		<State sr="con1">
+			<code>123</code>
+			<Int sr="arg0" val="1"/>
+		</State>
+	</Profile>
+	<Project sr="proj0" ve="2">
+		<cdate>1793990000000</cdate>
+		<name>NEXUS</name>
+		<pids>901</pids>
+		<tids>902</tids>
+	</Project>
+	<Task sr="task902">
+		<cdate>1793990000000</cdate>
+		<edate>1793990000000</edate>
+		<id>902</id>
+		<nme>NEXUS_Update_Market</nme>
+		<pri>100</pri>
+		<Action sr="act0" ve="7">
+			<code>129</code>
+			<label>Plan: what is due now (rate limits, market hours)</label>
+			<Str sr="arg0" ve="3">// NEXUS library - source: tasker/nexus.js
+var NX = (function () {
+"use strict";
+var SYMBOLS = ["IWM", "SPY", "QQQ", "GLD", "MAGS"];
+var SEP = "~~NX~~";
+var MINUS = "−";
+var DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+var QUOTE_EVERY = 30 * 60;      // seconds between quote refreshes in market hours
+var MIN_GAP = 65;               // seconds between two runs that call the API
+var PROVIDERS = {
+twelvedata: { base: "https://api.twelvedata.com", authPrefix: "apikey", label: "Twelve Data" },
+massive: { base: "https://api.massive.com", authPrefix: "Bearer", label: "Massive EOD" }
+};
+function isSet(v) { return v !== undefined &amp;&amp; v !== null &amp;&amp; String(v) !== "" &amp;&amp; String(v).charAt(0) !== "%"; }
+function str(v) { return isSet(v) ? String(v) : ""; }
+function num(v) { var n = parseFloat(v); return isFinite(n) ? n : NaN; }
+function clean(s) { return String(s).replace(/[|;\n\r]/g, " ").slice(0, 140); }
+function varName(sym) { return "Nexus_" + sym.toLowerCase(); }          // Tasker global per symbol
+function providerOf(env) {
+var p = str(env.global("NexusProvider")).toLowerCase();
+return PROVIDERS[p] ? p : "twelvedata";
+}
+function nyParts(ms) {
+var f = new Intl.DateTimeFormat("en-US", {
+timeZone: "America/New_York", weekday: "short", year: "numeric", month: "2-digit",
+day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23"
+});
+var o = {};
+f.formatToParts(new Date(ms)).forEach(function (p) { o[p.type] = p.value; });
+return { wd: o.weekday, ymd: o.year + "-" + o.month + "-" + o.day,
+h: parseInt(o.hour, 10) % 24, m: parseInt(o.minute, 10) };
+}
+function addDays(ymd, n) {
+var d = new Date(ymd + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n);
+return d.toISOString().slice(0, 10);
+}
+function weekdayOf(ymd) { return new Date(ymd + "T12:00:00Z").getUTCDay(); }
+function sessionLabel(ymd) {
+var d = new Date(ymd + "T12:00:00Z");
+return DAYS[d.getUTCDay()] + " " + d.getUTCDate() + " " + MONTHS[d.getUTCMonth()];
+}
+function updatedLabel(ms) {
+var d = new Date(ms);
+return DAYS[d.getDay()] + " " + d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+function lastCloseEpoch(nowMs) {
+var p = nyParts(nowMs), ymd = p.ymd;
+var mins = p.h * 60 + p.m;
+if (!(weekdayOf(ymd) &gt;= 1 &amp;&amp; weekdayOf(ymd) &lt;= 5 &amp;&amp; mins &gt;= 16 * 60)) {
+do { ymd = addDays(ymd, -1); } while (weekdayOf(ymd) === 0 || weekdayOf(ymd) === 6);
+}
+for (var off = 4; off &lt;= 5; off++) {
+var t = Date.parse(ymd + "T" + (16 + off) + ":00:00Z");
+var q = nyParts(t);
+if (q.ymd === ymd &amp;&amp; q.h === 16) return Math.floor(t / 1000);
+}
+return 0;
+}
+function inMarketHours(nowMs) {
+var p = nyParts(nowMs), wd = weekdayOf(p.ymd), mins = p.h * 60 + p.m;
+return wd &gt;= 1 &amp;&amp; wd &lt;= 5 &amp;&amp; mins &gt;= 9 * 60 + 30 &amp;&amp; mins &lt;= 16 * 60 + 10;
+}
+function plan(env, manual) {
+var now = env.now(), nowS = Math.floor(now / 1000), ny = nyParts(now);
+var prov = providerOf(env), P = PROVIDERS[prov];
+var r = { go: false, slots: [], authPrefix: P.authPrefix, provider: prov, reason: "" };
+for (var k = 1; k &lt;= 10; k++) env.setGlobal("NexusRaw" + k, "");
+if (!isSet(env.global("NexusKey"))) {
+env.setGlobal("NexusState", "ERROR");
+env.setGlobal("NexusMsg", "API key missing: add NexusKey in Tasker VARS");
+publish(env); r.reason = "no key"; return r;
+}
+var lastRun = num(env.global("NexusLastRun")) || 0;
+if (nowS - lastRun &lt; MIN_GAP) { r.reason = "too soon (rate limit)"; return r; }
+var haveData = SYMBOLS.some(function (s) { return isSet(env.global(varName(s))); });
+var lastQ = num(env.global("NexusTs")) || 0;
+var histDay = str(env.global("NexusHistDay"));
+var wantQuotes = false, wantHist = false;
+if (prov === "twelvedata") {
+if (manual || !haveData) wantQuotes = true;
+else if (inMarketHours(now)) wantQuotes = nowS - lastQ &gt;= QUOTE_EVERY - 60;
+else wantQuotes = lastQ &lt; lastCloseEpoch(now);            // pick up the closing prices once
+var wd = weekdayOf(ny.ymd), mins = ny.h * 60 + ny.m;
+var tradingDayStarted = wd &gt;= 1 &amp;&amp; wd &lt;= 5 &amp;&amp; mins &gt;= 9 * 60 + 30;
+wantHist = !histDay || (wantQuotes &amp;&amp; histDay !== ny.ymd &amp;&amp; (tradingDayStarted || manual));
+if (wantQuotes) SYMBOLS.forEach(function (s, i) {
+r.slots.push({ kind: "quote", sym: s, wait: 0,
+url: P.base + "/quote?symbol=" + s });
+});
+if (wantHist) SYMBOLS.forEach(function (s, i) {
+r.slots.push({ kind: "series", sym: s, wait: (i === 0 &amp;&amp; wantQuotes) ? 61 : 0,
+url: P.base + "/time_series?symbol=" + s + "&amp;interval=1day&amp;outputsize=6&amp;order=asc" });
+});
+} else {                                                    // massive: once per NY day after 00:15
+var due = manual || !haveData || ((ny.h * 60 + ny.m &gt;= 15) &amp;&amp; histDay !== ny.ymd);
+if (due) SYMBOLS.forEach(function (s, i) {
+r.slots.push({ kind: "bars", sym: s, wait: i ? 13 : 0,  // 5 requests per minute limit
+url: P.base + "/v2/aggs/ticker/" + s + "/range/1/day/" + addDays(ny.ymd, -14) + "/" + ny.ymd +
+"?adjusted=true&amp;sort=asc&amp;limit=50" });
+});
+}
+r.go = r.slots.length &gt; 0;
+if (r.go) {
+env.setGlobal("NexusLastRun", String(nowS));
+env.setGlobal("NexusPlan", JSON.stringify(r.slots.map(function (s) { return [s.kind, s.sym]; })));
+}
+r.reason = r.go ? (manual ? "manual" : "scheduled") : "nothing due";
+return r;
+}
+function credits(r) { return r.slots.length; }
+function parse(code, body) {
+if (!isSet(body) || body === "x") return { error: "No response (offline?)" };
+var j;
+try { j = JSON.parse(body); } catch (e) { return { error: "Bad response from server" }; }
+if (j &amp;&amp; (j.status === "error" || j.status === "ERROR" || j.status === "NOT_AUTHORIZED")) {
+var c = j.code || code, m = String(j.message || j.error || "");
+if (c === 401 || c === 403 || /api ?key/i.test(m)) return { error: "API key problem" };
+if (c === 429 || /exceeded|limit|credits/i.test(m)) return { error: "Rate limit reached" };
+return { error: "API error " + (c || "") };
+}
+if (isSet(code) &amp;&amp; String(code) !== "200") return { error: "HTTP " + code };
+return { json: j };
+}
+function readQuote(sym, j) {                       // Twelve Data /quote
+if (!j || String(j.symbol || "").toUpperCase() !== sym) return { error: "Wrong symbol in response" };
+if (j.currency &amp;&amp; j.currency !== "USD") return { error: "Not a USD listing" };
+var price = num(j.close), chg = num(j.change), pct = num(j.percent_change);
+if (!(price &gt; 0) || !isFinite(chg) || !isFinite(pct)) return { error: "Incomplete quote" };
+var d = /^\d{4}-\d\d-\d\d/.test(String(j.datetime)) ? String(j.datetime).slice(0, 10) : "";
+return { q: { p: price, c: chg, pc: pct, d: d, open: j.is_market_open === true || j.is_market_open === "true" } };
+}
+function readSeries(sym, j) {                      // Twelve Data /time_series 1day
+if (!j || !j.meta || String(j.meta.symbol || "").toUpperCase() !== sym) return { error: "Wrong symbol in history" };
+var bars = (j.values || []).map(function (v) { return { d: String(v.datetime).slice(0, 10), c: num(v.close) }; })
+.filter(function (b) { return /^\d{4}-\d\d-\d\d$/.test(b.d) &amp;&amp; b.c &gt; 0; })
+.sort(function (a, b) { return a.d &lt; b.d ? -1 : 1; });
+return bars.length ? { bars: bars.slice(-6) } : { error: "No history" };
+}
+function readBars(sym, j) {                        // Massive daily aggregates
+if (!j || String(j.ticker || "").toUpperCase() !== sym) return { error: "Wrong symbol in response" };
+if (j.status !== "OK" &amp;&amp; j.status !== "DELAYED") return { error: "Unexpected status " + j.status };
+var bars = (j.results || []).filter(function (b) { return num(b.c) &gt; 0 &amp;&amp; num(b.t) &gt; 0; })
+.map(function (b) { return { d: nyParts(num(b.t)).ymd, c: num(b.c) }; })
+.sort(function (a, b) { return a.d &lt; b.d ? -1 : 1; });
+return bars.length ? { bars: bars.slice(-6) } : { error: "No bars" };
+}
+function encodeBars(bars) { return bars.map(function (b) { return b.d + ":" + b.c; }).join(","); }
+function decodeBars(s) {
+return str(s).split(",").map(function (x) { var k = x.split(":"); return { d: k[0], c: num(k[1]) }; })
+.filter(function (b) { return /^\d{4}-\d\d-\d\d$/.test(b.d) &amp;&amp; b.c &gt; 0; });
+}
+function signed(v, digits, suffix) {
+var s = Math.abs(v).toFixed(digits);
+if (Number(s) === 0) return (0).toFixed(digits) + (suffix || "");
+return (v &gt; 0 ? "+" : MINUS) + s + (suffix || "");
+}
+function encodeQuote(q) {
+var r2 = Number(q.c.toFixed(2));
+var arrow = r2 &gt; 0 ? "\u25B2 " : r2 &lt; 0 ? "\u25BC " : "";
+return [q.p.toFixed(2), arrow + signed(q.c, 2), signed(q.pc, 2, "%"),
+r2 &gt; 0 ? "1" : r2 &lt; 0 ? "-1" : "0", q.d || "-"].join(";");
+}
+function quoteFromBars(bars) {
+if (bars.length &lt; 2) return null;
+var c = bars[bars.length - 1].c, p = bars[bars.length - 2].c;
+return { p: c, c: c - p, pc: (c - p) / p * 100, d: bars[bars.length - 1].d, open: false };
+}
+function niceUp(v) {
+var steps = [0.5, 1, 1.5, 2, 2.5, 3, 4, 5, 6, 7.5, 10, 12.5, 15, 20, 25, 30, 40, 50, 75, 100, 150, 200, 300, 500, 1000];
+for (var i = 0; i &lt; steps.length; i++) if (steps[i] &gt;= v * 1.05) return steps[i];
+return Math.ceil(v / 1000) * 1000;
+}
+function pctLabel(v) {
+var s = (Math.round(Math.abs(v) * 10) / 10).toString();
+return (v &gt; 0 ? "+" : v &lt; 0 ? MINUS : "") + s + "%";
+}
+function r1(v) { return (Math.round(v * 10) / 10).toString(); }
+function sessions(bars, quote) {
+var out = bars.slice();
+if (quote &amp;&amp; quote.d) {
+if (!out.length || quote.d &gt; out[out.length - 1].d) out.push({ d: quote.d, c: quote.p });
+else if (quote.d === out[out.length - 1].d) out[out.length - 1] = { d: quote.d, c: quote.p };
+}
+return out;
+}
+function buildChart(seriesBySym) {
+var all = {};
+SYMBOLS.forEach(function (s) { (seriesBySym[s] || []).forEach(function (b) { all[b.d] = 1; }); });
+var days = Object.keys(all).sort().slice(-5);
+if (!days.length) return null;
+var lines = SYMBOLS.map(function (s) {
+var map = {}; (seriesBySym[s] || []).forEach(function (b) { map[b.d] = b.c; });
+var base = null, last = null, out = [];
+days.forEach(function (d, i) {
+if (map[d] !== undefined) last = map[d];            // missing session: repeat previous close
+if (last === null) return;
+if (base === null) base = last;
+out.push({ i: i, v: (last / base - 1) * 100 });
+});
+return out;
+});
+var maxv = 0, minv = 0;
+lines.forEach(function (l) { l.forEach(function (p) { maxv = Math.max(maxv, p.v); minv = Math.min(minv, p.v); }); });
+var hi = niceUp(Math.max(maxv, 0.1)), lo = -niceUp(Math.max(-minv, 0.1));
+var y = function (v) { return 2 + (hi - v) / (hi - lo) * 96; };
+var n = days.length;
+var x = function (i) { return n === 1 ? 50 : 10 + i / (n - 1) * 80; };   // under the 5 day labels
+var paths = lines.map(function (l) {
+if (!l.length) return "M 0,0";
+if (l.length === 1) return "M " + r1(x(l[0].i)) + "," + r1(y(l[0].v)) + " L " + r1(x(l[0].i) + 0.1) + "," + r1(y(l[0].v));
+return l.map(function (p, k) { return (k ? "L " : "M ") + r1(x(p.i)) + "," + r1(y(p.v)); }).join(" ");
+});
+var zy = y(0);
+paths.push("M 0," + r1(zy) + " L 100," + r1(zy));
+var labels = days.map(function (d) { return DAYS[weekdayOf(d)]; });
+while (labels.length &lt; 5) labels.push("");
+return { paths: paths, meta: [zy &lt; 12 ? "" : pctLabel(hi), zy &gt; 88 ? "" : pctLabel(lo), r1(zy)].concat(labels),
+last: days[days.length - 1] };
+}
+function finish(env) {
+var now = env.now();
+var prov = providerOf(env);
+var planned = [];
+try { planned = JSON.parse(str(env.global("NexusPlan")) || "[]"); } catch (e) { planned = []; }
+var errs = [], okQuotes = 0, okAny = 0, anyOpen = false, histOkCount = 0;
+planned.forEach(function (p, idx) {
+var kind = p[0], sym = p[1];
+var raw = str(env.global("NexusRaw" + (idx + 1)));
+var cut = raw.indexOf(SEP);
+var res = parse(cut &gt;= 0 ? raw.slice(0, cut) : "", cut &gt;= 0 ? raw.slice(cut + SEP.length) : "");
+if (!res.error) {
+res = kind === "quote" ? readQuote(sym, res.json) : kind === "series" ? readSeries(sym, res.json) : readBars(sym, res.json);
+}
+if (res.error) { errs.push(sym + (kind === "series" ? " history" : "") + ": " + res.error); return; }
+okAny++;
+if (res.q) {
+okQuotes++; if (res.q.open) anyOpen = true;
+env.setGlobal(varName(sym), encodeQuote(res.q));
+} else {
+env.setGlobal("NexusBars_" + sym, encodeBars(res.bars));
+histOkCount++;
+if (kind === "bars") {                        // Massive: price/change from the last two closes
+var q = quoteFromBars(res.bars);
+if (q) { okQuotes++; env.setGlobal(varName(sym), encodeQuote(q)); }
+}
+}
+});
+if (histOkCount &gt; 0) env.setGlobal("NexusHistDay", nyParts(now).ymd);
+var series = {}, haveAny = false;
+SYMBOLS.forEach(function (s) {
+var bars = decodeBars(env.global("NexusBars_" + s));
+var qs = str(env.global(varName(s))).split(";");
+var quote = qs.length &gt;= 5 &amp;&amp; num(qs[0]) &gt; 0 &amp;&amp; /^\d{4}-\d\d-\d\d$/.test(qs[4]) ? { p: num(qs[0]), d: qs[4] } : null;
+series[s] = prov === "twelvedata" ? sessions(bars, quote) : bars;
+if (series[s].length || quote) haveAny = true;
+});
+var ch = haveAny ? buildChart(series) : null;
+if (ch) {
+env.setGlobal("NexusChart", ch.paths.join("|"));
+env.setGlobal("NexusChartMeta", ch.meta.join("|"));
+env.setGlobal("NexusSession", sessionLabel(ch.last));
+}
+if (planned.length &amp;&amp; !okAny) {                  // everything failed: keep all old data
+env.setGlobal("NexusState", "ERROR");
+env.setGlobal("NexusMsg", clean(errs.join(", ") || "No data"));
+publish(env); return false;
+}
+if (okQuotes) {
+env.setGlobal("NexusTs", String(Math.floor(now / 1000)));
+env.setGlobal("NexusUpd", updatedLabel(now));
+env.setGlobal("NexusState", prov === "massive" ? "EOD" : anyOpen ? "OPEN" : "CLOSED");
+}
+env.setGlobal("NexusMsg", clean(errs.length ? "Partly updated: " + errs.join(", ") : ""));
+publish(env);
+return true;
+}
+function publish(env) {
+var cm = str(env.global("NexusChartMeta")).split("|");
+while (cm.length &lt; 8) cm.push("");
+var meta = [str(env.global("NexusTs")) || "0", str(env.global("NexusState")) || "ERROR",
+str(env.global("NexusUpd")) || "--:--"].concat(cm.slice(0, 8))
+.concat([clean(str(env.global("NexusMsg"))), str(env.global("NexusSession")),
+PROVIDERS[providerOf(env)].label]);
+meta = meta.map(function (f) { return f === "" ? "-" : f; });
+env.setGlobal("NexusMeta", meta.join("|"));
+return meta;
+}
+function taskerEnv() {
+/* global global, setGlobal */
+return {
+global: function (n) { return global(n); },
+setGlobal: function (n, v) { setGlobal(n, v); },
+now: function () { return Date.now(); }
+};
+}
+return {
+SYMBOLS: SYMBOLS, SEP: SEP, PROVIDERS: PROVIDERS, nyParts: nyParts, inMarketHours: inMarketHours,
+lastCloseEpoch: lastCloseEpoch, plan: plan, credits: credits, parse: parse, finish: finish,
+buildChart: buildChart, sessions: sessions, publish: publish, varName: varName, taskerEnv: taskerEnv
+};
+})();
+if (typeof module !== "undefined" &amp;&amp; module.exports) { module.exports = NX; }
+
+var nx_plan = NX.plan(NX.taskerEnv(), !/^profile/.test(String(local("caller1"))));
+var nx_go = nx_plan.go ? "1" : "0";
+var nx_ak = nx_plan.authPrefix;
+var nx_why = nx_plan.reason;
+var nx_d1 = nx_plan.slots.length &gt;= 1 ? "1" : "0";
+var nx_u1 = nx_plan.slots[0] ? nx_plan.slots[0].url : "none";
+var nx_w1 = nx_plan.slots[0] ? String(nx_plan.slots[0].wait) : "0";
+var nx_p1 = (nx_plan.slots[0] &amp;&amp; nx_plan.slots[0].wait &gt; 0) ? "1" : "0";
+var nx_d2 = nx_plan.slots.length &gt;= 2 ? "1" : "0";
+var nx_u2 = nx_plan.slots[1] ? nx_plan.slots[1].url : "none";
+var nx_w2 = nx_plan.slots[1] ? String(nx_plan.slots[1].wait) : "0";
+var nx_p2 = (nx_plan.slots[1] &amp;&amp; nx_plan.slots[1].wait &gt; 0) ? "1" : "0";
+var nx_d3 = nx_plan.slots.length &gt;= 3 ? "1" : "0";
+var nx_u3 = nx_plan.slots[2] ? nx_plan.slots[2].url : "none";
+var nx_w3 = nx_plan.slots[2] ? String(nx_plan.slots[2].wait) : "0";
+var nx_p3 = (nx_plan.slots[2] &amp;&amp; nx_plan.slots[2].wait &gt; 0) ? "1" : "0";
+var nx_d4 = nx_plan.slots.length &gt;= 4 ? "1" : "0";
+var nx_u4 = nx_plan.slots[3] ? nx_plan.slots[3].url : "none";
+var nx_w4 = nx_plan.slots[3] ? String(nx_plan.slots[3].wait) : "0";
+var nx_p4 = (nx_plan.slots[3] &amp;&amp; nx_plan.slots[3].wait &gt; 0) ? "1" : "0";
+var nx_d5 = nx_plan.slots.length &gt;= 5 ? "1" : "0";
+var nx_u5 = nx_plan.slots[4] ? nx_plan.slots[4].url : "none";
+var nx_w5 = nx_plan.slots[4] ? String(nx_plan.slots[4].wait) : "0";
+var nx_p5 = (nx_plan.slots[4] &amp;&amp; nx_plan.slots[4].wait &gt; 0) ? "1" : "0";
+var nx_d6 = nx_plan.slots.length &gt;= 6 ? "1" : "0";
+var nx_u6 = nx_plan.slots[5] ? nx_plan.slots[5].url : "none";
+var nx_w6 = nx_plan.slots[5] ? String(nx_plan.slots[5].wait) : "0";
+var nx_p6 = (nx_plan.slots[5] &amp;&amp; nx_plan.slots[5].wait &gt; 0) ? "1" : "0";
+var nx_d7 = nx_plan.slots.length &gt;= 7 ? "1" : "0";
+var nx_u7 = nx_plan.slots[6] ? nx_plan.slots[6].url : "none";
+var nx_w7 = nx_plan.slots[6] ? String(nx_plan.slots[6].wait) : "0";
+var nx_p7 = (nx_plan.slots[6] &amp;&amp; nx_plan.slots[6].wait &gt; 0) ? "1" : "0";
+var nx_d8 = nx_plan.slots.length &gt;= 8 ? "1" : "0";
+var nx_u8 = nx_plan.slots[7] ? nx_plan.slots[7].url : "none";
+var nx_w8 = nx_plan.slots[7] ? String(nx_plan.slots[7].wait) : "0";
+var nx_p8 = (nx_plan.slots[7] &amp;&amp; nx_plan.slots[7].wait &gt; 0) ? "1" : "0";
+var nx_d9 = nx_plan.slots.length &gt;= 9 ? "1" : "0";
+var nx_u9 = nx_plan.slots[8] ? nx_plan.slots[8].url : "none";
+var nx_w9 = nx_plan.slots[8] ? String(nx_plan.slots[8].wait) : "0";
+var nx_p9 = (nx_plan.slots[8] &amp;&amp; nx_plan.slots[8].wait &gt; 0) ? "1" : "0";
+var nx_d10 = nx_plan.slots.length &gt;= 10 ? "1" : "0";
+var nx_u10 = nx_plan.slots[9] ? nx_plan.slots[9].url : "none";
+var nx_w10 = nx_plan.slots[9] ? String(nx_plan.slots[9].wait) : "0";
+var nx_p10 = (nx_plan.slots[9] &amp;&amp; nx_plan.slots[9].wait &gt; 0) ? "1" : "0";
+</Str>
+			<Str sr="arg1" ve="3"/>
+			<Int sr="arg2" val="1"/>
+			<Int sr="arg3" val="45"/>
+		</Action>
+		<Action sr="act1" ve="7">
+			<code>30</code>
+			<label>Pause before request 1 (API per-minute limit)</label>
+			<Int sr="arg0" val="0"/>
+			<Int sr="arg1">
+				<var>%nx_w1</var>
+			</Int>
+			<Int sr="arg2" val="0"/>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_p1</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act2" ve="7">
+			<code>547</code>
+			<label>Clear old response 1</label>
+			<Str sr="arg0" ve="3">%http_data</Str>
+			<Str sr="arg1" ve="3">x</Str>
+			<Int sr="arg2" val="0"/>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_d1</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act3" ve="7">
+			<code>547</code>
+			<label>Clear old status 1</label>
+			<Str sr="arg0" ve="3">%http_response_code</Str>
+			<Str sr="arg1" ve="3">0</Str>
+			<Int sr="arg2" val="0"/>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_d1</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act4" ve="7">
+			<code>339</code>
+			<label>Request 1</label>
+			<se>false</se>
+			<Bundle sr="arg0">
+				<Vals sr="val"/>
+			</Bundle>
+			<Int sr="arg1" val="0"/>
+			<Str sr="arg2" ve="3">%nx_u1</Str>
+			<Str sr="arg3" ve="3">Authorization:%nx_ak %NexusKey</Str>
+			<Str sr="arg4" ve="3"/>
+			<Str sr="arg5" ve="3"/>
+			<Str sr="arg6" ve="3"/>
+			<Str sr="arg7" ve="3"/>
+			<Int sr="arg8" val="30"/>
+			<Int sr="arg9" val="0"/>
+			<Int sr="arg10" val="0"/>
+			<Int sr="arg11" val="0"/>
+			<Int sr="arg12" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_d1</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act5" ve="7">
+			<code>547</code>
+			<label>Save response 1</label>
+			<Str sr="arg0" ve="3">%NexusRaw1</Str>
+			<Str sr="arg1" ve="3">%http_response_code~~NX~~%http_data</Str>
+			<Int sr="arg2" val="0"/>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_d1</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act6" ve="7">
+			<code>30</code>
+			<label>Pause before request 2 (API per-minute limit)</label>
+			<Int sr="arg0" val="0"/>
+			<Int sr="arg1">
+				<var>%nx_w2</var>
+			</Int>
+			<Int sr="arg2" val="0"/>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_p2</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act7" ve="7">
+			<code>547</code>
+			<label>Clear old response 2</label>
+			<Str sr="arg0" ve="3">%http_data</Str>
+			<Str sr="arg1" ve="3">x</Str>
+			<Int sr="arg2" val="0"/>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_d2</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act8" ve="7">
+			<code>547</code>
+			<label>Clear old status 2</label>
+			<Str sr="arg0" ve="3">%http_response_code</Str>
+			<Str sr="arg1" ve="3">0</Str>
+			<Int sr="arg2" val="0"/>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_d2</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act9" ve="7">
+			<code>339</code>
+			<label>Request 2</label>
+			<se>false</se>
+			<Bundle sr="arg0">
+				<Vals sr="val"/>
+			</Bundle>
+			<Int sr="arg1" val="0"/>
+			<Str sr="arg2" ve="3">%nx_u2</Str>
+			<Str sr="arg3" ve="3">Authorization:%nx_ak %NexusKey</Str>
+			<Str sr="arg4" ve="3"/>
+			<Str sr="arg5" ve="3"/>
+			<Str sr="arg6" ve="3"/>
+			<Str sr="arg7" ve="3"/>
+			<Int sr="arg8" val="30"/>
+			<Int sr="arg9" val="0"/>
+			<Int sr="arg10" val="0"/>
+			<Int sr="arg11" val="0"/>
+			<Int sr="arg12" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_d2</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act10" ve="7">
+			<code>547</code>
+			<label>Save response 2</label>
+			<Str sr="arg0" ve="3">%NexusRaw2</Str>
+			<Str sr="arg1" ve="3">%http_response_code~~NX~~%http_data</Str>
+			<Int sr="arg2" val="0"/>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_d2</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act11" ve="7">
+			<code>30</code>
+			<label>Pause before request 3 (API per-minute limit)</label>
+			<Int sr="arg0" val="0"/>
+			<Int sr="arg1">
+				<var>%nx_w3</var>
+			</Int>
+			<Int sr="arg2" val="0"/>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_p3</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act12" ve="7">
+			<code>547</code>
+			<label>Clear old response 3</label>
+			<Str sr="arg0" ve="3">%http_data</Str>
+			<Str sr="arg1" ve="3">x</Str>
+			<Int sr="arg2" val="0"/>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_d3</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act13" ve="7">
+			<code>547</code>
+			<label>Clear old status 3</label>
+			<Str sr="arg0" ve="3">%http_response_code</Str>
+			<Str sr="arg1" ve="3">0</Str>
+			<Int sr="arg2" val="0"/>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_d3</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act14" ve="7">
+			<code>339</code>
+			<label>Request 3</label>
+			<se>false</se>
+			<Bundle sr="arg0">
+				<Vals sr="val"/>
+			</Bundle>
+			<Int sr="arg1" val="0"/>
+			<Str sr="arg2" ve="3">%nx_u3</Str>
+			<Str sr="arg3" ve="3">Authorization:%nx_ak %NexusKey</Str>
+			<Str sr="arg4" ve="3"/>
+			<Str sr="arg5" ve="3"/>
+			<Str sr="arg6" ve="3"/>
+			<Str sr="arg7" ve="3"/>
+			<Int sr="arg8" val="30"/>
+			<Int sr="arg9" val="0"/>
+			<Int sr="arg10" val="0"/>
+			<Int sr="arg11" val="0"/>
+			<Int sr="arg12" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_d3</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act15" ve="7">
+			<code>547</code>
+			<label>Save response 3</label>
+			<Str sr="arg0" ve="3">%NexusRaw3</Str>
+			<Str sr="arg1" ve="3">%http_response_code~~NX~~%http_data</Str>
+			<Int sr="arg2" val="0"/>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_d3</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act16" ve="7">
+			<code>30</code>
+			<label>Pause before request 4 (API per-minute limit)</label>
+			<Int sr="arg0" val="0"/>
+			<Int sr="arg1">
+				<var>%nx_w4</var>
+			</Int>
+			<Int sr="arg2" val="0"/>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_p4</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act17" ve="7">
+			<code>547</code>
+			<label>Clear old response 4</label>
+			<Str sr="arg0" ve="3">%http_data</Str>
+			<Str sr="arg1" ve="3">x</Str>
+			<Int sr="arg2" val="0"/>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_d4</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act18" ve="7">
+			<code>547</code>
+			<label>Clear old status 4</label>
+			<Str sr="arg0" ve="3">%http_response_code</Str>
+			<Str sr="arg1" ve="3">0</Str>
+			<Int sr="arg2" val="0"/>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_d4</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act19" ve="7">
+			<code>339</code>
+			<label>Request 4</label>
+			<se>false</se>
+			<Bundle sr="arg0">
+				<Vals sr="val"/>
+			</Bundle>
+			<Int sr="arg1" val="0"/>
+			<Str sr="arg2" ve="3">%nx_u4</Str>
+			<Str sr="arg3" ve="3">Authorization:%nx_ak %NexusKey</Str>
+			<Str sr="arg4" ve="3"/>
+			<Str sr="arg5" ve="3"/>
+			<Str sr="arg6" ve="3"/>
+			<Str sr="arg7" ve="3"/>
+			<Int sr="arg8" val="30"/>
+			<Int sr="arg9" val="0"/>
+			<Int sr="arg10" val="0"/>
+			<Int sr="arg11" val="0"/>
+			<Int sr="arg12" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_d4</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act20" ve="7">
+			<code>547</code>
+			<label>Save response 4</label>
+			<Str sr="arg0" ve="3">%NexusRaw4</Str>
+			<Str sr="arg1" ve="3">%http_response_code~~NX~~%http_data</Str>
+			<Int sr="arg2" val="0"/>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_d4</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act21" ve="7">
+			<code>30</code>
+			<label>Pause before request 5 (API per-minute limit)</label>
+			<Int sr="arg0" val="0"/>
+			<Int sr="arg1">
+				<var>%nx_w5</var>
+			</Int>
+			<Int sr="arg2" val="0"/>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_p5</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act22" ve="7">
+			<code>547</code>
+			<label>Clear old response 5</label>
+			<Str sr="arg0" ve="3">%http_data</Str>
+			<Str sr="arg1" ve="3">x</Str>
+			<Int sr="arg2" val="0"/>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_d5</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act23" ve="7">
+			<code>547</code>
+			<label>Clear old status 5</label>
+			<Str sr="arg0" ve="3">%http_response_code</Str>
+			<Str sr="arg1" ve="3">0</Str>
+			<Int sr="arg2" val="0"/>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_d5</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act24" ve="7">
+			<code>339</code>
+			<label>Request 5</label>
+			<se>false</se>
+			<Bundle sr="arg0">
+				<Vals sr="val"/>
+			</Bundle>
+			<Int sr="arg1" val="0"/>
+			<Str sr="arg2" ve="3">%nx_u5</Str>
+			<Str sr="arg3" ve="3">Authorization:%nx_ak %NexusKey</Str>
+			<Str sr="arg4" ve="3"/>
+			<Str sr="arg5" ve="3"/>
+			<Str sr="arg6" ve="3"/>
+			<Str sr="arg7" ve="3"/>
+			<Int sr="arg8" val="30"/>
+			<Int sr="arg9" val="0"/>
+			<Int sr="arg10" val="0"/>
+			<Int sr="arg11" val="0"/>
+			<Int sr="arg12" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_d5</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act25" ve="7">
+			<code>547</code>
+			<label>Save response 5</label>
+			<Str sr="arg0" ve="3">%NexusRaw5</Str>
+			<Str sr="arg1" ve="3">%http_response_code~~NX~~%http_data</Str>
+			<Int sr="arg2" val="0"/>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_d5</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act26" ve="7">
+			<code>30</code>
+			<label>Pause before request 6 (API per-minute limit)</label>
+			<Int sr="arg0" val="0"/>
+			<Int sr="arg1">
+				<var>%nx_w6</var>
+			</Int>
+			<Int sr="arg2" val="0"/>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_p6</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act27" ve="7">
+			<code>547</code>
+			<label>Clear old response 6</label>
+			<Str sr="arg0" ve="3">%http_data</Str>
+			<Str sr="arg1" ve="3">x</Str>
+			<Int sr="arg2" val="0"/>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_d6</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act28" ve="7">
+			<code>547</code>
+			<label>Clear old status 6</label>
+			<Str sr="arg0" ve="3">%http_response_code</Str>
+			<Str sr="arg1" ve="3">0</Str>
+			<Int sr="arg2" val="0"/>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_d6</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act29" ve="7">
+			<code>339</code>
+			<label>Request 6</label>
+			<se>false</se>
+			<Bundle sr="arg0">
+				<Vals sr="val"/>
+			</Bundle>
+			<Int sr="arg1" val="0"/>
+			<Str sr="arg2" ve="3">%nx_u6</Str>
+			<Str sr="arg3" ve="3">Authorization:%nx_ak %NexusKey</Str>
+			<Str sr="arg4" ve="3"/>
+			<Str sr="arg5" ve="3"/>
+			<Str sr="arg6" ve="3"/>
+			<Str sr="arg7" ve="3"/>
+			<Int sr="arg8" val="30"/>
+			<Int sr="arg9" val="0"/>
+			<Int sr="arg10" val="0"/>
+			<Int sr="arg11" val="0"/>
+			<Int sr="arg12" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_d6</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act30" ve="7">
+			<code>547</code>
+			<label>Save response 6</label>
+			<Str sr="arg0" ve="3">%NexusRaw6</Str>
+			<Str sr="arg1" ve="3">%http_response_code~~NX~~%http_data</Str>
+			<Int sr="arg2" val="0"/>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_d6</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act31" ve="7">
+			<code>30</code>
+			<label>Pause before request 7 (API per-minute limit)</label>
+			<Int sr="arg0" val="0"/>
+			<Int sr="arg1">
+				<var>%nx_w7</var>
+			</Int>
+			<Int sr="arg2" val="0"/>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_p7</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act32" ve="7">
+			<code>547</code>
+			<label>Clear old response 7</label>
+			<Str sr="arg0" ve="3">%http_data</Str>
+			<Str sr="arg1" ve="3">x</Str>
+			<Int sr="arg2" val="0"/>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_d7</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act33" ve="7">
+			<code>547</code>
+			<label>Clear old status 7</label>
+			<Str sr="arg0" ve="3">%http_response_code</Str>
+			<Str sr="arg1" ve="3">0</Str>
+			<Int sr="arg2" val="0"/>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_d7</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act34" ve="7">
+			<code>339</code>
+			<label>Request 7</label>
+			<se>false</se>
+			<Bundle sr="arg0">
+				<Vals sr="val"/>
+			</Bundle>
+			<Int sr="arg1" val="0"/>
+			<Str sr="arg2" ve="3">%nx_u7</Str>
+			<Str sr="arg3" ve="3">Authorization:%nx_ak %NexusKey</Str>
+			<Str sr="arg4" ve="3"/>
+			<Str sr="arg5" ve="3"/>
+			<Str sr="arg6" ve="3"/>
+			<Str sr="arg7" ve="3"/>
+			<Int sr="arg8" val="30"/>
+			<Int sr="arg9" val="0"/>
+			<Int sr="arg10" val="0"/>
+			<Int sr="arg11" val="0"/>
+			<Int sr="arg12" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_d7</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act35" ve="7">
+			<code>547</code>
+			<label>Save response 7</label>
+			<Str sr="arg0" ve="3">%NexusRaw7</Str>
+			<Str sr="arg1" ve="3">%http_response_code~~NX~~%http_data</Str>
+			<Int sr="arg2" val="0"/>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_d7</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act36" ve="7">
+			<code>30</code>
+			<label>Pause before request 8 (API per-minute limit)</label>
+			<Int sr="arg0" val="0"/>
+			<Int sr="arg1">
+				<var>%nx_w8</var>
+			</Int>
+			<Int sr="arg2" val="0"/>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_p8</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act37" ve="7">
+			<code>547</code>
+			<label>Clear old response 8</label>
+			<Str sr="arg0" ve="3">%http_data</Str>
+			<Str sr="arg1" ve="3">x</Str>
+			<Int sr="arg2" val="0"/>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_d8</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act38" ve="7">
+			<code>547</code>
+			<label>Clear old status 8</label>
+			<Str sr="arg0" ve="3">%http_response_code</Str>
+			<Str sr="arg1" ve="3">0</Str>
+			<Int sr="arg2" val="0"/>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_d8</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act39" ve="7">
+			<code>339</code>
+			<label>Request 8</label>
+			<se>false</se>
+			<Bundle sr="arg0">
+				<Vals sr="val"/>
+			</Bundle>
+			<Int sr="arg1" val="0"/>
+			<Str sr="arg2" ve="3">%nx_u8</Str>
+			<Str sr="arg3" ve="3">Authorization:%nx_ak %NexusKey</Str>
+			<Str sr="arg4" ve="3"/>
+			<Str sr="arg5" ve="3"/>
+			<Str sr="arg6" ve="3"/>
+			<Str sr="arg7" ve="3"/>
+			<Int sr="arg8" val="30"/>
+			<Int sr="arg9" val="0"/>
+			<Int sr="arg10" val="0"/>
+			<Int sr="arg11" val="0"/>
+			<Int sr="arg12" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_d8</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act40" ve="7">
+			<code>547</code>
+			<label>Save response 8</label>
+			<Str sr="arg0" ve="3">%NexusRaw8</Str>
+			<Str sr="arg1" ve="3">%http_response_code~~NX~~%http_data</Str>
+			<Int sr="arg2" val="0"/>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_d8</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act41" ve="7">
+			<code>30</code>
+			<label>Pause before request 9 (API per-minute limit)</label>
+			<Int sr="arg0" val="0"/>
+			<Int sr="arg1">
+				<var>%nx_w9</var>
+			</Int>
+			<Int sr="arg2" val="0"/>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_p9</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act42" ve="7">
+			<code>547</code>
+			<label>Clear old response 9</label>
+			<Str sr="arg0" ve="3">%http_data</Str>
+			<Str sr="arg1" ve="3">x</Str>
+			<Int sr="arg2" val="0"/>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_d9</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act43" ve="7">
+			<code>547</code>
+			<label>Clear old status 9</label>
+			<Str sr="arg0" ve="3">%http_response_code</Str>
+			<Str sr="arg1" ve="3">0</Str>
+			<Int sr="arg2" val="0"/>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_d9</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act44" ve="7">
+			<code>339</code>
+			<label>Request 9</label>
+			<se>false</se>
+			<Bundle sr="arg0">
+				<Vals sr="val"/>
+			</Bundle>
+			<Int sr="arg1" val="0"/>
+			<Str sr="arg2" ve="3">%nx_u9</Str>
+			<Str sr="arg3" ve="3">Authorization:%nx_ak %NexusKey</Str>
+			<Str sr="arg4" ve="3"/>
+			<Str sr="arg5" ve="3"/>
+			<Str sr="arg6" ve="3"/>
+			<Str sr="arg7" ve="3"/>
+			<Int sr="arg8" val="30"/>
+			<Int sr="arg9" val="0"/>
+			<Int sr="arg10" val="0"/>
+			<Int sr="arg11" val="0"/>
+			<Int sr="arg12" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_d9</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act45" ve="7">
+			<code>547</code>
+			<label>Save response 9</label>
+			<Str sr="arg0" ve="3">%NexusRaw9</Str>
+			<Str sr="arg1" ve="3">%http_response_code~~NX~~%http_data</Str>
+			<Int sr="arg2" val="0"/>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_d9</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act46" ve="7">
+			<code>30</code>
+			<label>Pause before request 10 (API per-minute limit)</label>
+			<Int sr="arg0" val="0"/>
+			<Int sr="arg1">
+				<var>%nx_w10</var>
+			</Int>
+			<Int sr="arg2" val="0"/>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_p10</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act47" ve="7">
+			<code>547</code>
+			<label>Clear old response 10</label>
+			<Str sr="arg0" ve="3">%http_data</Str>
+			<Str sr="arg1" ve="3">x</Str>
+			<Int sr="arg2" val="0"/>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_d10</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act48" ve="7">
+			<code>547</code>
+			<label>Clear old status 10</label>
+			<Str sr="arg0" ve="3">%http_response_code</Str>
+			<Str sr="arg1" ve="3">0</Str>
+			<Int sr="arg2" val="0"/>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_d10</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act49" ve="7">
+			<code>339</code>
+			<label>Request 10</label>
+			<se>false</se>
+			<Bundle sr="arg0">
+				<Vals sr="val"/>
+			</Bundle>
+			<Int sr="arg1" val="0"/>
+			<Str sr="arg2" ve="3">%nx_u10</Str>
+			<Str sr="arg3" ve="3">Authorization:%nx_ak %NexusKey</Str>
+			<Str sr="arg4" ve="3"/>
+			<Str sr="arg5" ve="3"/>
+			<Str sr="arg6" ve="3"/>
+			<Str sr="arg7" ve="3"/>
+			<Int sr="arg8" val="30"/>
+			<Int sr="arg9" val="0"/>
+			<Int sr="arg10" val="0"/>
+			<Int sr="arg11" val="0"/>
+			<Int sr="arg12" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_d10</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act50" ve="7">
+			<code>547</code>
+			<label>Save response 10</label>
+			<Str sr="arg0" ve="3">%NexusRaw10</Str>
+			<Str sr="arg1" ve="3">%http_response_code~~NX~~%http_data</Str>
+			<Int sr="arg2" val="0"/>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="0"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_d10</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act51" ve="7">
+			<code>129</code>
+			<label>Check responses, keep last good data, build chart</label>
+			<Str sr="arg0" ve="3">// NEXUS library - source: tasker/nexus.js
+var NX = (function () {
+"use strict";
+var SYMBOLS = ["IWM", "SPY", "QQQ", "GLD", "MAGS"];
+var SEP = "~~NX~~";
+var MINUS = "−";
+var DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+var QUOTE_EVERY = 30 * 60;      // seconds between quote refreshes in market hours
+var MIN_GAP = 65;               // seconds between two runs that call the API
+var PROVIDERS = {
+twelvedata: { base: "https://api.twelvedata.com", authPrefix: "apikey", label: "Twelve Data" },
+massive: { base: "https://api.massive.com", authPrefix: "Bearer", label: "Massive EOD" }
+};
+function isSet(v) { return v !== undefined &amp;&amp; v !== null &amp;&amp; String(v) !== "" &amp;&amp; String(v).charAt(0) !== "%"; }
+function str(v) { return isSet(v) ? String(v) : ""; }
+function num(v) { var n = parseFloat(v); return isFinite(n) ? n : NaN; }
+function clean(s) { return String(s).replace(/[|;\n\r]/g, " ").slice(0, 140); }
+function varName(sym) { return "Nexus_" + sym.toLowerCase(); }          // Tasker global per symbol
+function providerOf(env) {
+var p = str(env.global("NexusProvider")).toLowerCase();
+return PROVIDERS[p] ? p : "twelvedata";
+}
+function nyParts(ms) {
+var f = new Intl.DateTimeFormat("en-US", {
+timeZone: "America/New_York", weekday: "short", year: "numeric", month: "2-digit",
+day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23"
+});
+var o = {};
+f.formatToParts(new Date(ms)).forEach(function (p) { o[p.type] = p.value; });
+return { wd: o.weekday, ymd: o.year + "-" + o.month + "-" + o.day,
+h: parseInt(o.hour, 10) % 24, m: parseInt(o.minute, 10) };
+}
+function addDays(ymd, n) {
+var d = new Date(ymd + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n);
+return d.toISOString().slice(0, 10);
+}
+function weekdayOf(ymd) { return new Date(ymd + "T12:00:00Z").getUTCDay(); }
+function sessionLabel(ymd) {
+var d = new Date(ymd + "T12:00:00Z");
+return DAYS[d.getUTCDay()] + " " + d.getUTCDate() + " " + MONTHS[d.getUTCMonth()];
+}
+function updatedLabel(ms) {
+var d = new Date(ms);
+return DAYS[d.getDay()] + " " + d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+function lastCloseEpoch(nowMs) {
+var p = nyParts(nowMs), ymd = p.ymd;
+var mins = p.h * 60 + p.m;
+if (!(weekdayOf(ymd) &gt;= 1 &amp;&amp; weekdayOf(ymd) &lt;= 5 &amp;&amp; mins &gt;= 16 * 60)) {
+do { ymd = addDays(ymd, -1); } while (weekdayOf(ymd) === 0 || weekdayOf(ymd) === 6);
+}
+for (var off = 4; off &lt;= 5; off++) {
+var t = Date.parse(ymd + "T" + (16 + off) + ":00:00Z");
+var q = nyParts(t);
+if (q.ymd === ymd &amp;&amp; q.h === 16) return Math.floor(t / 1000);
+}
+return 0;
+}
+function inMarketHours(nowMs) {
+var p = nyParts(nowMs), wd = weekdayOf(p.ymd), mins = p.h * 60 + p.m;
+return wd &gt;= 1 &amp;&amp; wd &lt;= 5 &amp;&amp; mins &gt;= 9 * 60 + 30 &amp;&amp; mins &lt;= 16 * 60 + 10;
+}
+function plan(env, manual) {
+var now = env.now(), nowS = Math.floor(now / 1000), ny = nyParts(now);
+var prov = providerOf(env), P = PROVIDERS[prov];
+var r = { go: false, slots: [], authPrefix: P.authPrefix, provider: prov, reason: "" };
+for (var k = 1; k &lt;= 10; k++) env.setGlobal("NexusRaw" + k, "");
+if (!isSet(env.global("NexusKey"))) {
+env.setGlobal("NexusState", "ERROR");
+env.setGlobal("NexusMsg", "API key missing: add NexusKey in Tasker VARS");
+publish(env); r.reason = "no key"; return r;
+}
+var lastRun = num(env.global("NexusLastRun")) || 0;
+if (nowS - lastRun &lt; MIN_GAP) { r.reason = "too soon (rate limit)"; return r; }
+var haveData = SYMBOLS.some(function (s) { return isSet(env.global(varName(s))); });
+var lastQ = num(env.global("NexusTs")) || 0;
+var histDay = str(env.global("NexusHistDay"));
+var wantQuotes = false, wantHist = false;
+if (prov === "twelvedata") {
+if (manual || !haveData) wantQuotes = true;
+else if (inMarketHours(now)) wantQuotes = nowS - lastQ &gt;= QUOTE_EVERY - 60;
+else wantQuotes = lastQ &lt; lastCloseEpoch(now);            // pick up the closing prices once
+var wd = weekdayOf(ny.ymd), mins = ny.h * 60 + ny.m;
+var tradingDayStarted = wd &gt;= 1 &amp;&amp; wd &lt;= 5 &amp;&amp; mins &gt;= 9 * 60 + 30;
+wantHist = !histDay || (wantQuotes &amp;&amp; histDay !== ny.ymd &amp;&amp; (tradingDayStarted || manual));
+if (wantQuotes) SYMBOLS.forEach(function (s, i) {
+r.slots.push({ kind: "quote", sym: s, wait: 0,
+url: P.base + "/quote?symbol=" + s });
+});
+if (wantHist) SYMBOLS.forEach(function (s, i) {
+r.slots.push({ kind: "series", sym: s, wait: (i === 0 &amp;&amp; wantQuotes) ? 61 : 0,
+url: P.base + "/time_series?symbol=" + s + "&amp;interval=1day&amp;outputsize=6&amp;order=asc" });
+});
+} else {                                                    // massive: once per NY day after 00:15
+var due = manual || !haveData || ((ny.h * 60 + ny.m &gt;= 15) &amp;&amp; histDay !== ny.ymd);
+if (due) SYMBOLS.forEach(function (s, i) {
+r.slots.push({ kind: "bars", sym: s, wait: i ? 13 : 0,  // 5 requests per minute limit
+url: P.base + "/v2/aggs/ticker/" + s + "/range/1/day/" + addDays(ny.ymd, -14) + "/" + ny.ymd +
+"?adjusted=true&amp;sort=asc&amp;limit=50" });
+});
+}
+r.go = r.slots.length &gt; 0;
+if (r.go) {
+env.setGlobal("NexusLastRun", String(nowS));
+env.setGlobal("NexusPlan", JSON.stringify(r.slots.map(function (s) { return [s.kind, s.sym]; })));
+}
+r.reason = r.go ? (manual ? "manual" : "scheduled") : "nothing due";
+return r;
+}
+function credits(r) { return r.slots.length; }
+function parse(code, body) {
+if (!isSet(body) || body === "x") return { error: "No response (offline?)" };
+var j;
+try { j = JSON.parse(body); } catch (e) { return { error: "Bad response from server" }; }
+if (j &amp;&amp; (j.status === "error" || j.status === "ERROR" || j.status === "NOT_AUTHORIZED")) {
+var c = j.code || code, m = String(j.message || j.error || "");
+if (c === 401 || c === 403 || /api ?key/i.test(m)) return { error: "API key problem" };
+if (c === 429 || /exceeded|limit|credits/i.test(m)) return { error: "Rate limit reached" };
+return { error: "API error " + (c || "") };
+}
+if (isSet(code) &amp;&amp; String(code) !== "200") return { error: "HTTP " + code };
+return { json: j };
+}
+function readQuote(sym, j) {                       // Twelve Data /quote
+if (!j || String(j.symbol || "").toUpperCase() !== sym) return { error: "Wrong symbol in response" };
+if (j.currency &amp;&amp; j.currency !== "USD") return { error: "Not a USD listing" };
+var price = num(j.close), chg = num(j.change), pct = num(j.percent_change);
+if (!(price &gt; 0) || !isFinite(chg) || !isFinite(pct)) return { error: "Incomplete quote" };
+var d = /^\d{4}-\d\d-\d\d/.test(String(j.datetime)) ? String(j.datetime).slice(0, 10) : "";
+return { q: { p: price, c: chg, pc: pct, d: d, open: j.is_market_open === true || j.is_market_open === "true" } };
+}
+function readSeries(sym, j) {                      // Twelve Data /time_series 1day
+if (!j || !j.meta || String(j.meta.symbol || "").toUpperCase() !== sym) return { error: "Wrong symbol in history" };
+var bars = (j.values || []).map(function (v) { return { d: String(v.datetime).slice(0, 10), c: num(v.close) }; })
+.filter(function (b) { return /^\d{4}-\d\d-\d\d$/.test(b.d) &amp;&amp; b.c &gt; 0; })
+.sort(function (a, b) { return a.d &lt; b.d ? -1 : 1; });
+return bars.length ? { bars: bars.slice(-6) } : { error: "No history" };
+}
+function readBars(sym, j) {                        // Massive daily aggregates
+if (!j || String(j.ticker || "").toUpperCase() !== sym) return { error: "Wrong symbol in response" };
+if (j.status !== "OK" &amp;&amp; j.status !== "DELAYED") return { error: "Unexpected status " + j.status };
+var bars = (j.results || []).filter(function (b) { return num(b.c) &gt; 0 &amp;&amp; num(b.t) &gt; 0; })
+.map(function (b) { return { d: nyParts(num(b.t)).ymd, c: num(b.c) }; })
+.sort(function (a, b) { return a.d &lt; b.d ? -1 : 1; });
+return bars.length ? { bars: bars.slice(-6) } : { error: "No bars" };
+}
+function encodeBars(bars) { return bars.map(function (b) { return b.d + ":" + b.c; }).join(","); }
+function decodeBars(s) {
+return str(s).split(",").map(function (x) { var k = x.split(":"); return { d: k[0], c: num(k[1]) }; })
+.filter(function (b) { return /^\d{4}-\d\d-\d\d$/.test(b.d) &amp;&amp; b.c &gt; 0; });
+}
+function signed(v, digits, suffix) {
+var s = Math.abs(v).toFixed(digits);
+if (Number(s) === 0) return (0).toFixed(digits) + (suffix || "");
+return (v &gt; 0 ? "+" : MINUS) + s + (suffix || "");
+}
+function encodeQuote(q) {
+var r2 = Number(q.c.toFixed(2));
+var arrow = r2 &gt; 0 ? "\u25B2 " : r2 &lt; 0 ? "\u25BC " : "";
+return [q.p.toFixed(2), arrow + signed(q.c, 2), signed(q.pc, 2, "%"),
+r2 &gt; 0 ? "1" : r2 &lt; 0 ? "-1" : "0", q.d || "-"].join(";");
+}
+function quoteFromBars(bars) {
+if (bars.length &lt; 2) return null;
+var c = bars[bars.length - 1].c, p = bars[bars.length - 2].c;
+return { p: c, c: c - p, pc: (c - p) / p * 100, d: bars[bars.length - 1].d, open: false };
+}
+function niceUp(v) {
+var steps = [0.5, 1, 1.5, 2, 2.5, 3, 4, 5, 6, 7.5, 10, 12.5, 15, 20, 25, 30, 40, 50, 75, 100, 150, 200, 300, 500, 1000];
+for (var i = 0; i &lt; steps.length; i++) if (steps[i] &gt;= v * 1.05) return steps[i];
+return Math.ceil(v / 1000) * 1000;
+}
+function pctLabel(v) {
+var s = (Math.round(Math.abs(v) * 10) / 10).toString();
+return (v &gt; 0 ? "+" : v &lt; 0 ? MINUS : "") + s + "%";
+}
+function r1(v) { return (Math.round(v * 10) / 10).toString(); }
+function sessions(bars, quote) {
+var out = bars.slice();
+if (quote &amp;&amp; quote.d) {
+if (!out.length || quote.d &gt; out[out.length - 1].d) out.push({ d: quote.d, c: quote.p });
+else if (quote.d === out[out.length - 1].d) out[out.length - 1] = { d: quote.d, c: quote.p };
+}
+return out;
+}
+function buildChart(seriesBySym) {
+var all = {};
+SYMBOLS.forEach(function (s) { (seriesBySym[s] || []).forEach(function (b) { all[b.d] = 1; }); });
+var days = Object.keys(all).sort().slice(-5);
+if (!days.length) return null;
+var lines = SYMBOLS.map(function (s) {
+var map = {}; (seriesBySym[s] || []).forEach(function (b) { map[b.d] = b.c; });
+var base = null, last = null, out = [];
+days.forEach(function (d, i) {
+if (map[d] !== undefined) last = map[d];            // missing session: repeat previous close
+if (last === null) return;
+if (base === null) base = last;
+out.push({ i: i, v: (last / base - 1) * 100 });
+});
+return out;
+});
+var maxv = 0, minv = 0;
+lines.forEach(function (l) { l.forEach(function (p) { maxv = Math.max(maxv, p.v); minv = Math.min(minv, p.v); }); });
+var hi = niceUp(Math.max(maxv, 0.1)), lo = -niceUp(Math.max(-minv, 0.1));
+var y = function (v) { return 2 + (hi - v) / (hi - lo) * 96; };
+var n = days.length;
+var x = function (i) { return n === 1 ? 50 : 10 + i / (n - 1) * 80; };   // under the 5 day labels
+var paths = lines.map(function (l) {
+if (!l.length) return "M 0,0";
+if (l.length === 1) return "M " + r1(x(l[0].i)) + "," + r1(y(l[0].v)) + " L " + r1(x(l[0].i) + 0.1) + "," + r1(y(l[0].v));
+return l.map(function (p, k) { return (k ? "L " : "M ") + r1(x(p.i)) + "," + r1(y(p.v)); }).join(" ");
+});
+var zy = y(0);
+paths.push("M 0," + r1(zy) + " L 100," + r1(zy));
+var labels = days.map(function (d) { return DAYS[weekdayOf(d)]; });
+while (labels.length &lt; 5) labels.push("");
+return { paths: paths, meta: [zy &lt; 12 ? "" : pctLabel(hi), zy &gt; 88 ? "" : pctLabel(lo), r1(zy)].concat(labels),
+last: days[days.length - 1] };
+}
+function finish(env) {
+var now = env.now();
+var prov = providerOf(env);
+var planned = [];
+try { planned = JSON.parse(str(env.global("NexusPlan")) || "[]"); } catch (e) { planned = []; }
+var errs = [], okQuotes = 0, okAny = 0, anyOpen = false, histOkCount = 0;
+planned.forEach(function (p, idx) {
+var kind = p[0], sym = p[1];
+var raw = str(env.global("NexusRaw" + (idx + 1)));
+var cut = raw.indexOf(SEP);
+var res = parse(cut &gt;= 0 ? raw.slice(0, cut) : "", cut &gt;= 0 ? raw.slice(cut + SEP.length) : "");
+if (!res.error) {
+res = kind === "quote" ? readQuote(sym, res.json) : kind === "series" ? readSeries(sym, res.json) : readBars(sym, res.json);
+}
+if (res.error) { errs.push(sym + (kind === "series" ? " history" : "") + ": " + res.error); return; }
+okAny++;
+if (res.q) {
+okQuotes++; if (res.q.open) anyOpen = true;
+env.setGlobal(varName(sym), encodeQuote(res.q));
+} else {
+env.setGlobal("NexusBars_" + sym, encodeBars(res.bars));
+histOkCount++;
+if (kind === "bars") {                        // Massive: price/change from the last two closes
+var q = quoteFromBars(res.bars);
+if (q) { okQuotes++; env.setGlobal(varName(sym), encodeQuote(q)); }
+}
+}
+});
+if (histOkCount &gt; 0) env.setGlobal("NexusHistDay", nyParts(now).ymd);
+var series = {}, haveAny = false;
+SYMBOLS.forEach(function (s) {
+var bars = decodeBars(env.global("NexusBars_" + s));
+var qs = str(env.global(varName(s))).split(";");
+var quote = qs.length &gt;= 5 &amp;&amp; num(qs[0]) &gt; 0 &amp;&amp; /^\d{4}-\d\d-\d\d$/.test(qs[4]) ? { p: num(qs[0]), d: qs[4] } : null;
+series[s] = prov === "twelvedata" ? sessions(bars, quote) : bars;
+if (series[s].length || quote) haveAny = true;
+});
+var ch = haveAny ? buildChart(series) : null;
+if (ch) {
+env.setGlobal("NexusChart", ch.paths.join("|"));
+env.setGlobal("NexusChartMeta", ch.meta.join("|"));
+env.setGlobal("NexusSession", sessionLabel(ch.last));
+}
+if (planned.length &amp;&amp; !okAny) {                  // everything failed: keep all old data
+env.setGlobal("NexusState", "ERROR");
+env.setGlobal("NexusMsg", clean(errs.join(", ") || "No data"));
+publish(env); return false;
+}
+if (okQuotes) {
+env.setGlobal("NexusTs", String(Math.floor(now / 1000)));
+env.setGlobal("NexusUpd", updatedLabel(now));
+env.setGlobal("NexusState", prov === "massive" ? "EOD" : anyOpen ? "OPEN" : "CLOSED");
+}
+env.setGlobal("NexusMsg", clean(errs.length ? "Partly updated: " + errs.join(", ") : ""));
+publish(env);
+return true;
+}
+function publish(env) {
+var cm = str(env.global("NexusChartMeta")).split("|");
+while (cm.length &lt; 8) cm.push("");
+var meta = [str(env.global("NexusTs")) || "0", str(env.global("NexusState")) || "ERROR",
+str(env.global("NexusUpd")) || "--:--"].concat(cm.slice(0, 8))
+.concat([clean(str(env.global("NexusMsg"))), str(env.global("NexusSession")),
+PROVIDERS[providerOf(env)].label]);
+meta = meta.map(function (f) { return f === "" ? "-" : f; });
+env.setGlobal("NexusMeta", meta.join("|"));
+return meta;
+}
+function taskerEnv() {
+/* global global, setGlobal */
+return {
+global: function (n) { return global(n); },
+setGlobal: function (n, v) { setGlobal(n, v); },
+now: function () { return Date.now(); }
+};
+}
+return {
+SYMBOLS: SYMBOLS, SEP: SEP, PROVIDERS: PROVIDERS, nyParts: nyParts, inMarketHours: inMarketHours,
+lastCloseEpoch: lastCloseEpoch, plan: plan, credits: credits, parse: parse, finish: finish,
+buildChart: buildChart, sessions: sessions, publish: publish, varName: varName, taskerEnv: taskerEnv
+};
+})();
+if (typeof module !== "undefined" &amp;&amp; module.exports) { module.exports = NX; }
+NX.finish(NX.taskerEnv());
+</Str>
+			<Str sr="arg1" ve="3"/>
+			<Int sr="arg2" val="1"/>
+			<Int sr="arg3" val="45"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%nx_go</lhs>
+					<op>0</op>
+					<rhs>1</rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act52" ve="7">
+			<code>703953103</code>
+			<Bundle sr="arg0">
+				<Vals sr="val">
+					<com.twofortyfouram.locale.intent.extra.BLURB>Set: iwm</com.twofortyfouram.locale.intent.extra.BLURB>
+					<com.twofortyfouram.locale.intent.extra.BLURB-type>java.lang.String</com.twofortyfouram.locale.intent.extra.BLURB-type>
+					<net.dinglisch.android.tasker.extras.VARIABLE_REPLACE_KEYS>org.kustom.tasker.VAR_NAME org.kustom.tasker.VAR_VALUE</net.dinglisch.android.tasker.extras.VARIABLE_REPLACE_KEYS>
+					<net.dinglisch.android.tasker.extras.VARIABLE_REPLACE_KEYS-type>java.lang.String</net.dinglisch.android.tasker.extras.VARIABLE_REPLACE_KEYS-type>
+					<net.dinglisch.android.tasker.subbundled>true</net.dinglisch.android.tasker.subbundled>
+					<net.dinglisch.android.tasker.subbundled-type>java.lang.Boolean</net.dinglisch.android.tasker.subbundled-type>
+					<org.kustom.tasker.VAR_NAME>iwm</org.kustom.tasker.VAR_NAME>
+					<org.kustom.tasker.VAR_NAME-type>java.lang.String</org.kustom.tasker.VAR_NAME-type>
+					<org.kustom.tasker.VAR_VALUE>%Nexus_iwm</org.kustom.tasker.VAR_VALUE>
+					<org.kustom.tasker.VAR_VALUE-type>java.lang.String</org.kustom.tasker.VAR_VALUE-type>
+					<org.kustom.tasker.extra.INT_VERSION_CODE>376422110</org.kustom.tasker.extra.INT_VERSION_CODE>
+					<org.kustom.tasker.extra.INT_VERSION_CODE-type>java.lang.Integer</org.kustom.tasker.extra.INT_VERSION_CODE-type>
+				</Vals>
+			</Bundle>
+			<Str sr="arg1" ve="3">org.kustom.wallpaper</Str>
+			<Str sr="arg2" ve="3">org.kustom.lib.editor.tasker.EditVarActivity</Str>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="1"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%Nexus_iwm</lhs>
+					<op>12</op>
+					<rhs></rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act53" ve="7">
+			<code>703953103</code>
+			<Bundle sr="arg0">
+				<Vals sr="val">
+					<com.twofortyfouram.locale.intent.extra.BLURB>Set: spy</com.twofortyfouram.locale.intent.extra.BLURB>
+					<com.twofortyfouram.locale.intent.extra.BLURB-type>java.lang.String</com.twofortyfouram.locale.intent.extra.BLURB-type>
+					<net.dinglisch.android.tasker.extras.VARIABLE_REPLACE_KEYS>org.kustom.tasker.VAR_NAME org.kustom.tasker.VAR_VALUE</net.dinglisch.android.tasker.extras.VARIABLE_REPLACE_KEYS>
+					<net.dinglisch.android.tasker.extras.VARIABLE_REPLACE_KEYS-type>java.lang.String</net.dinglisch.android.tasker.extras.VARIABLE_REPLACE_KEYS-type>
+					<net.dinglisch.android.tasker.subbundled>true</net.dinglisch.android.tasker.subbundled>
+					<net.dinglisch.android.tasker.subbundled-type>java.lang.Boolean</net.dinglisch.android.tasker.subbundled-type>
+					<org.kustom.tasker.VAR_NAME>spy</org.kustom.tasker.VAR_NAME>
+					<org.kustom.tasker.VAR_NAME-type>java.lang.String</org.kustom.tasker.VAR_NAME-type>
+					<org.kustom.tasker.VAR_VALUE>%Nexus_spy</org.kustom.tasker.VAR_VALUE>
+					<org.kustom.tasker.VAR_VALUE-type>java.lang.String</org.kustom.tasker.VAR_VALUE-type>
+					<org.kustom.tasker.extra.INT_VERSION_CODE>376422110</org.kustom.tasker.extra.INT_VERSION_CODE>
+					<org.kustom.tasker.extra.INT_VERSION_CODE-type>java.lang.Integer</org.kustom.tasker.extra.INT_VERSION_CODE-type>
+				</Vals>
+			</Bundle>
+			<Str sr="arg1" ve="3">org.kustom.wallpaper</Str>
+			<Str sr="arg2" ve="3">org.kustom.lib.editor.tasker.EditVarActivity</Str>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="1"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%Nexus_spy</lhs>
+					<op>12</op>
+					<rhs></rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act54" ve="7">
+			<code>703953103</code>
+			<Bundle sr="arg0">
+				<Vals sr="val">
+					<com.twofortyfouram.locale.intent.extra.BLURB>Set: qqq</com.twofortyfouram.locale.intent.extra.BLURB>
+					<com.twofortyfouram.locale.intent.extra.BLURB-type>java.lang.String</com.twofortyfouram.locale.intent.extra.BLURB-type>
+					<net.dinglisch.android.tasker.extras.VARIABLE_REPLACE_KEYS>org.kustom.tasker.VAR_NAME org.kustom.tasker.VAR_VALUE</net.dinglisch.android.tasker.extras.VARIABLE_REPLACE_KEYS>
+					<net.dinglisch.android.tasker.extras.VARIABLE_REPLACE_KEYS-type>java.lang.String</net.dinglisch.android.tasker.extras.VARIABLE_REPLACE_KEYS-type>
+					<net.dinglisch.android.tasker.subbundled>true</net.dinglisch.android.tasker.subbundled>
+					<net.dinglisch.android.tasker.subbundled-type>java.lang.Boolean</net.dinglisch.android.tasker.subbundled-type>
+					<org.kustom.tasker.VAR_NAME>qqq</org.kustom.tasker.VAR_NAME>
+					<org.kustom.tasker.VAR_NAME-type>java.lang.String</org.kustom.tasker.VAR_NAME-type>
+					<org.kustom.tasker.VAR_VALUE>%Nexus_qqq</org.kustom.tasker.VAR_VALUE>
+					<org.kustom.tasker.VAR_VALUE-type>java.lang.String</org.kustom.tasker.VAR_VALUE-type>
+					<org.kustom.tasker.extra.INT_VERSION_CODE>376422110</org.kustom.tasker.extra.INT_VERSION_CODE>
+					<org.kustom.tasker.extra.INT_VERSION_CODE-type>java.lang.Integer</org.kustom.tasker.extra.INT_VERSION_CODE-type>
+				</Vals>
+			</Bundle>
+			<Str sr="arg1" ve="3">org.kustom.wallpaper</Str>
+			<Str sr="arg2" ve="3">org.kustom.lib.editor.tasker.EditVarActivity</Str>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="1"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%Nexus_qqq</lhs>
+					<op>12</op>
+					<rhs></rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act55" ve="7">
+			<code>703953103</code>
+			<Bundle sr="arg0">
+				<Vals sr="val">
+					<com.twofortyfouram.locale.intent.extra.BLURB>Set: gld</com.twofortyfouram.locale.intent.extra.BLURB>
+					<com.twofortyfouram.locale.intent.extra.BLURB-type>java.lang.String</com.twofortyfouram.locale.intent.extra.BLURB-type>
+					<net.dinglisch.android.tasker.extras.VARIABLE_REPLACE_KEYS>org.kustom.tasker.VAR_NAME org.kustom.tasker.VAR_VALUE</net.dinglisch.android.tasker.extras.VARIABLE_REPLACE_KEYS>
+					<net.dinglisch.android.tasker.extras.VARIABLE_REPLACE_KEYS-type>java.lang.String</net.dinglisch.android.tasker.extras.VARIABLE_REPLACE_KEYS-type>
+					<net.dinglisch.android.tasker.subbundled>true</net.dinglisch.android.tasker.subbundled>
+					<net.dinglisch.android.tasker.subbundled-type>java.lang.Boolean</net.dinglisch.android.tasker.subbundled-type>
+					<org.kustom.tasker.VAR_NAME>gld</org.kustom.tasker.VAR_NAME>
+					<org.kustom.tasker.VAR_NAME-type>java.lang.String</org.kustom.tasker.VAR_NAME-type>
+					<org.kustom.tasker.VAR_VALUE>%Nexus_gld</org.kustom.tasker.VAR_VALUE>
+					<org.kustom.tasker.VAR_VALUE-type>java.lang.String</org.kustom.tasker.VAR_VALUE-type>
+					<org.kustom.tasker.extra.INT_VERSION_CODE>376422110</org.kustom.tasker.extra.INT_VERSION_CODE>
+					<org.kustom.tasker.extra.INT_VERSION_CODE-type>java.lang.Integer</org.kustom.tasker.extra.INT_VERSION_CODE-type>
+				</Vals>
+			</Bundle>
+			<Str sr="arg1" ve="3">org.kustom.wallpaper</Str>
+			<Str sr="arg2" ve="3">org.kustom.lib.editor.tasker.EditVarActivity</Str>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="1"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%Nexus_gld</lhs>
+					<op>12</op>
+					<rhs></rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act56" ve="7">
+			<code>703953103</code>
+			<Bundle sr="arg0">
+				<Vals sr="val">
+					<com.twofortyfouram.locale.intent.extra.BLURB>Set: mags</com.twofortyfouram.locale.intent.extra.BLURB>
+					<com.twofortyfouram.locale.intent.extra.BLURB-type>java.lang.String</com.twofortyfouram.locale.intent.extra.BLURB-type>
+					<net.dinglisch.android.tasker.extras.VARIABLE_REPLACE_KEYS>org.kustom.tasker.VAR_NAME org.kustom.tasker.VAR_VALUE</net.dinglisch.android.tasker.extras.VARIABLE_REPLACE_KEYS>
+					<net.dinglisch.android.tasker.extras.VARIABLE_REPLACE_KEYS-type>java.lang.String</net.dinglisch.android.tasker.extras.VARIABLE_REPLACE_KEYS-type>
+					<net.dinglisch.android.tasker.subbundled>true</net.dinglisch.android.tasker.subbundled>
+					<net.dinglisch.android.tasker.subbundled-type>java.lang.Boolean</net.dinglisch.android.tasker.subbundled-type>
+					<org.kustom.tasker.VAR_NAME>mags</org.kustom.tasker.VAR_NAME>
+					<org.kustom.tasker.VAR_NAME-type>java.lang.String</org.kustom.tasker.VAR_NAME-type>
+					<org.kustom.tasker.VAR_VALUE>%Nexus_mags</org.kustom.tasker.VAR_VALUE>
+					<org.kustom.tasker.VAR_VALUE-type>java.lang.String</org.kustom.tasker.VAR_VALUE-type>
+					<org.kustom.tasker.extra.INT_VERSION_CODE>376422110</org.kustom.tasker.extra.INT_VERSION_CODE>
+					<org.kustom.tasker.extra.INT_VERSION_CODE-type>java.lang.Integer</org.kustom.tasker.extra.INT_VERSION_CODE-type>
+				</Vals>
+			</Bundle>
+			<Str sr="arg1" ve="3">org.kustom.wallpaper</Str>
+			<Str sr="arg2" ve="3">org.kustom.lib.editor.tasker.EditVarActivity</Str>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="1"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%Nexus_mags</lhs>
+					<op>12</op>
+					<rhs></rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act57" ve="7">
+			<code>703953103</code>
+			<Bundle sr="arg0">
+				<Vals sr="val">
+					<com.twofortyfouram.locale.intent.extra.BLURB>Set: nx_chart</com.twofortyfouram.locale.intent.extra.BLURB>
+					<com.twofortyfouram.locale.intent.extra.BLURB-type>java.lang.String</com.twofortyfouram.locale.intent.extra.BLURB-type>
+					<net.dinglisch.android.tasker.extras.VARIABLE_REPLACE_KEYS>org.kustom.tasker.VAR_NAME org.kustom.tasker.VAR_VALUE</net.dinglisch.android.tasker.extras.VARIABLE_REPLACE_KEYS>
+					<net.dinglisch.android.tasker.extras.VARIABLE_REPLACE_KEYS-type>java.lang.String</net.dinglisch.android.tasker.extras.VARIABLE_REPLACE_KEYS-type>
+					<net.dinglisch.android.tasker.subbundled>true</net.dinglisch.android.tasker.subbundled>
+					<net.dinglisch.android.tasker.subbundled-type>java.lang.Boolean</net.dinglisch.android.tasker.subbundled-type>
+					<org.kustom.tasker.VAR_NAME>nx_chart</org.kustom.tasker.VAR_NAME>
+					<org.kustom.tasker.VAR_NAME-type>java.lang.String</org.kustom.tasker.VAR_NAME-type>
+					<org.kustom.tasker.VAR_VALUE>%NexusChart</org.kustom.tasker.VAR_VALUE>
+					<org.kustom.tasker.VAR_VALUE-type>java.lang.String</org.kustom.tasker.VAR_VALUE-type>
+					<org.kustom.tasker.extra.INT_VERSION_CODE>376422110</org.kustom.tasker.extra.INT_VERSION_CODE>
+					<org.kustom.tasker.extra.INT_VERSION_CODE-type>java.lang.Integer</org.kustom.tasker.extra.INT_VERSION_CODE-type>
+				</Vals>
+			</Bundle>
+			<Str sr="arg1" ve="3">org.kustom.wallpaper</Str>
+			<Str sr="arg2" ve="3">org.kustom.lib.editor.tasker.EditVarActivity</Str>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="1"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%NexusChart</lhs>
+					<op>12</op>
+					<rhs></rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+		<Action sr="act58" ve="7">
+			<code>703953103</code>
+			<Bundle sr="arg0">
+				<Vals sr="val">
+					<com.twofortyfouram.locale.intent.extra.BLURB>Set: nx_meta</com.twofortyfouram.locale.intent.extra.BLURB>
+					<com.twofortyfouram.locale.intent.extra.BLURB-type>java.lang.String</com.twofortyfouram.locale.intent.extra.BLURB-type>
+					<net.dinglisch.android.tasker.extras.VARIABLE_REPLACE_KEYS>org.kustom.tasker.VAR_NAME org.kustom.tasker.VAR_VALUE</net.dinglisch.android.tasker.extras.VARIABLE_REPLACE_KEYS>
+					<net.dinglisch.android.tasker.extras.VARIABLE_REPLACE_KEYS-type>java.lang.String</net.dinglisch.android.tasker.extras.VARIABLE_REPLACE_KEYS-type>
+					<net.dinglisch.android.tasker.subbundled>true</net.dinglisch.android.tasker.subbundled>
+					<net.dinglisch.android.tasker.subbundled-type>java.lang.Boolean</net.dinglisch.android.tasker.subbundled-type>
+					<org.kustom.tasker.VAR_NAME>nx_meta</org.kustom.tasker.VAR_NAME>
+					<org.kustom.tasker.VAR_NAME-type>java.lang.String</org.kustom.tasker.VAR_NAME-type>
+					<org.kustom.tasker.VAR_VALUE>%NexusMeta</org.kustom.tasker.VAR_VALUE>
+					<org.kustom.tasker.VAR_VALUE-type>java.lang.String</org.kustom.tasker.VAR_VALUE-type>
+					<org.kustom.tasker.extra.INT_VERSION_CODE>376422110</org.kustom.tasker.extra.INT_VERSION_CODE>
+					<org.kustom.tasker.extra.INT_VERSION_CODE-type>java.lang.Integer</org.kustom.tasker.extra.INT_VERSION_CODE-type>
+				</Vals>
+			</Bundle>
+			<Str sr="arg1" ve="3">org.kustom.wallpaper</Str>
+			<Str sr="arg2" ve="3">org.kustom.lib.editor.tasker.EditVarActivity</Str>
+			<Int sr="arg3" val="0"/>
+			<Int sr="arg4" val="1"/>
+			<ConditionList sr="if">
+				<Condition sr="c0" ve="3">
+					<lhs>%NexusMeta</lhs>
+					<op>12</op>
+					<rhs></rhs>
+				</Condition>
+			</ConditionList>
+		</Action>
+	</Task>
+</TaskerData>

@@ -192,7 +192,9 @@ return (v &gt; 0 ? "+" : MINUS) + s + (suffix || "");
 }
 function encodeQuote(q) {
 var r2 = Number(q.c.toFixed(2));
-return [q.p.toFixed(2), signed(q.c, 2), signed(q.pc, 2, "%"), r2 &gt; 0 ? "1" : r2 &lt; 0 ? "-1" : "0", q.d].join(";");
+var arrow = r2 &gt; 0 ? "\u25B2 " : r2 &lt; 0 ? "\u25BC " : "";
+return [q.p.toFixed(2), arrow + signed(q.c, 2), signed(q.pc, 2, "%"),
+r2 &gt; 0 ? "1" : r2 &lt; 0 ? "-1" : "0", q.d || "-"].join(";");
 }
 function quoteFromBars(bars) {
 if (bars.length &lt; 2) return null;
@@ -284,7 +286,7 @@ var series = {}, haveAny = false;
 SYMBOLS.forEach(function (s) {
 var bars = decodeBars(env.global("NexusBars_" + s));
 var qs = str(env.global(varName(s))).split(";");
-var quote = qs.length &gt;= 5 &amp;&amp; num(qs[0]) &gt; 0 ? { p: num(qs[0]), d: qs[4] } : null;
+var quote = qs.length &gt;= 5 &amp;&amp; num(qs[0]) &gt; 0 &amp;&amp; /^\d{4}-\d\d-\d\d$/.test(qs[4]) ? { p: num(qs[0]), d: qs[4] } : null;
 series[s] = prov === "twelvedata" ? sessions(bars, quote) : bars;
 if (series[s].length || quote) haveAny = true;
 });
@@ -315,6 +317,7 @@ var meta = [str(env.global("NexusTs")) || "0", str(env.global("NexusState")) || 
 str(env.global("NexusUpd")) || "--:--"].concat(cm.slice(0, 8))
 .concat([clean(str(env.global("NexusMsg"))), str(env.global("NexusSession")),
 PROVIDERS[providerOf(env)].label]);
+meta = meta.map(function (f) { return f === "" ? "-" : f; });
 env.setGlobal("NexusMeta", meta.join("|"));
 return meta;
 }
@@ -1475,7 +1478,9 @@ return (v &gt; 0 ? "+" : MINUS) + s + (suffix || "");
 }
 function encodeQuote(q) {
 var r2 = Number(q.c.toFixed(2));
-return [q.p.toFixed(2), signed(q.c, 2), signed(q.pc, 2, "%"), r2 &gt; 0 ? "1" : r2 &lt; 0 ? "-1" : "0", q.d].join(";");
+var arrow = r2 &gt; 0 ? "\u25B2 " : r2 &lt; 0 ? "\u25BC " : "";
+return [q.p.toFixed(2), arrow + signed(q.c, 2), signed(q.pc, 2, "%"),
+r2 &gt; 0 ? "1" : r2 &lt; 0 ? "-1" : "0", q.d || "-"].join(";");
 }
 function quoteFromBars(bars) {
 if (bars.length &lt; 2) return null;
@@ -1567,7 +1572,7 @@ var series = {}, haveAny = false;
 SYMBOLS.forEach(function (s) {
 var bars = decodeBars(env.global("NexusBars_" + s));
 var qs = str(env.global(varName(s))).split(";");
-var quote = qs.length &gt;= 5 &amp;&amp; num(qs[0]) &gt; 0 ? { p: num(qs[0]), d: qs[4] } : null;
+var quote = qs.length &gt;= 5 &amp;&amp; num(qs[0]) &gt; 0 &amp;&amp; /^\d{4}-\d\d-\d\d$/.test(qs[4]) ? { p: num(qs[0]), d: qs[4] } : null;
 series[s] = prov === "twelvedata" ? sessions(bars, quote) : bars;
 if (series[s].length || quote) haveAny = true;
 });
@@ -1598,6 +1603,7 @@ var meta = [str(env.global("NexusTs")) || "0", str(env.global("NexusState")) || 
 str(env.global("NexusUpd")) || "--:--"].concat(cm.slice(0, 8))
 .concat([clean(str(env.global("NexusMsg"))), str(env.global("NexusSession")),
 PROVIDERS[providerOf(env)].label]);
+meta = meta.map(function (f) { return f === "" ? "-" : f; });
 env.setGlobal("NexusMeta", meta.join("|"));
 return meta;
 }

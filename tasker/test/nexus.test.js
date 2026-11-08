@@ -128,8 +128,10 @@ test("Twelve Data: rows, daily change and a 5-line chart on one common scale", (
   const e = env();
   const r = NX.plan(e, false); runTasker(e, r, okAll);
   // real AAPL quote relabelled as IWM: close 342.37, change -1.80002, pct -0.52300266
-  assert.equal(e.g.Nexus_iwm, `342.37;${MINUS}1.80;${MINUS}0.52%;-1;2026-11-06`);
-  for (const s of SYMS) assert.match(e.g[NX.varName(s)], /^[\d.]+;[+−]?[\d.]+;[+−]?[\d.]+%;-?[01];\d{4}-\d\d-\d\d$/);
+  // the change field arrives ready to display (arrow + sign), see encodeQuote()
+  assert.equal(e.g.Nexus_iwm, `342.37;▼ ${MINUS}1.80;${MINUS}0.52%;-1;2026-11-06`);
+  for (const s of SYMS) assert.match(e.g[NX.varName(s)], /^[\d.]+;(▲ \+|▼ −)?[\d.]+;[+−]?[\d.]+%;-?[01];\d{4}-\d\d-\d\d$/);
+  for (const f of e.g.NexusMeta.split("|")) assert.notEqual(f, "", "no empty meta fields (KLWP split skips them)");
   const paths = e.g.NexusChart.split("|");
   assert.equal(paths.length, 6);
   const meta = e.g.NexusMeta.split("|");
@@ -199,8 +201,8 @@ test("Massive provider (end of day) still works with real IWM and MAGS data", ()
   assert.deepEqual(r.slots.map((s) => s.wait), [0, 13, 13, 13, 13]);
   runTasker(e, r, (s) => s.sym === "IWM" ? ["200", fx("massive_iwm_daily.json")]
     : s.sym === "MAGS" ? ["200", fx("massive_mags_daily.json")] : ["401", fx("massive_err_badkey.json")]);
-  assert.equal(e.g.Nexus_iwm, "273.67;+2.69;+0.99%;1;2026-11-06");
-  assert.match(e.g.Nexus_mags, /^67\.53;\+0\.68;\+1\.02%;1;2026-11-06$/);
+  assert.equal(e.g.Nexus_iwm, "273.67;\u25B2 +2.69;+0.99%;1;2026-11-06");
+  assert.equal(e.g.Nexus_mags, "67.53;\u25B2 +0.68;+1.02%;1;2026-11-06");
   assert.equal(e.g.NexusState, "EOD");
   assert.match(e.g.NexusMsg, /SPY: API key problem/);
 });

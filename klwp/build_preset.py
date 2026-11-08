@@ -42,7 +42,15 @@ C = {  # palette, #AARRGGBB as KLWP stores it
 SYMBOLS = ["IWM", "SPY", "QQQ", "GLD", "MAGS"]
 VARS = [s.lower() for s in SYMBOLS]                      # KLWP variables: iwm spy qqq gld mags
 SERIES = ["#FFE88A42", "#FF252525", "#FF75B9D5", "#FFA89060", "#FF8065A9"]  # orange ink blue gold purple
-SAFE = 120          # units kept free above the bottom edge (Samsung navigation bar + margin)
+SAFE = 160          # SCREEN units kept free above the bottom edge. Measured on the S22: 1 dp = 2.5 units,
+                    # so 160 = 64 dp; Samsung's 3-button bar is 48 dp, gesture bar smaller.
+# Scaling: the design is drawn on a 720-unit-wide canvas; the phone's KLWP canvas is
+# wider (S22 measured: 960 x 2080 units). Both layout groups are scaled with
+# config_scale_value = 100 * SCALE (same technique as other generated KLWP themes).
+# Globals tab -> "zoom": 0 = automatic, or a fixed percentage (e.g. 133).
+BASE_H = 1420       # design height needed: top part 980 + bottom block 408 + gap
+SCALE = f'if(gv(zoom)>0, gv(zoom)/100, mu(min, si(rwidth)/720, (si(rheight)-{SAFE})/{BASE_H}))'
+PREVIEW_SCALE = 960 / 720   # S22 as measured from the phone screenshot
 
 # Preview samples (klwp/samples/*.json, built by tasker/make_sample.js from REAL
 # API responses, or empty/error states). Used only for preview.html / PNGs.
@@ -80,6 +88,8 @@ def NOQ(i):
     return f'br(tasker, {VARS[i]})=""'
 def MT(k):     # field k of meta
     return f'tc(split, br(tasker, nx_meta), "|", {k})'
+def MTX(k):    # same, but "-" (placeholder for an empty field) shows as blank
+    return f'if({MT(k)}="-", "", {MT(k)})'
 EOD = f'{MT(13)}="Massive EOD"'
 NOMETA = 'br(tasker, nx_meta)=""'
 NOCHART = 'br(tasker, nx_chart)=""'
@@ -132,8 +142,9 @@ def rect(title, x, y, w, h, color, corners=0, stroke=None, anchor="TOPLEFT", eve
     return m
 
 def circle(title, x, y, d, color):
-    m = {"internal_type": "ShapeModule", "internal_title": title, "shape_type": "CIRCLE",
-         "shape_width": float(d), "shape_height": float(d), "paint_color": color}
+    # A RECT with corner radius d/2 (the CIRCLE type rendered as a square on the S22)
+    m = {"internal_type": "ShapeModule", "internal_title": title, "shape_type": "RECT",
+         "shape_width": float(d), "shape_height": float(d), "shape_corners": float(d) / 2, "paint_color": color}
     _pos(m, x, y, "TOPLEFT")
     preview.append(("circle", dict(x=x, y=y, d=d, color=color)))
     return m
@@ -292,7 +303,7 @@ def stocks():
         text("H symbol", "SYMBOL", M, y0 + 36, 18, "semibold", C["muted"]),
         text("H price", f'$if({EOD}, "CLOSE", "PRICE")$', 340, y0 + 36, 18, "semibold", C["muted"], anchor="TOPRIGHT",
              sample="CLOSE" if sm(13) == "Massive EOD" else "PRICE"),
-        text("H chg", "CHG $", 180, y0 + 36, 18, "semibold", C["muted"], anchor="TOPRIGHT"),
+        text("H chg", "CHG", 180, y0 + 36, 18, "semibold", C["muted"], anchor="TOPRIGHT"),
         text("H pct", "CHG %", M, y0 + 36, 18, "semibold", C["muted"], anchor="TOPRIGHT"),
     ]
     color = lambda i: (f'$if({NOQ(i)}, "{C["muted"]}", {Q(i, 3)}>0, "{C["pos"]}", '
@@ -307,9 +318,9 @@ def stocks():
             text(f"Price {i}", f'$if({NOQ(i)}, "--.--", {Q(i, 0)})$', 340, y + 7, 27, "regular", C["text"],
                  anchor="TOPRIGHT", sample=sq(i, 1)),
             text(f"Change {i}",
-                 f'$if({NOQ(i)}, "--.--", {Q(i, 3)}<0, "▼ " + {Q(i, 1)}, {Q(i, 3)}>0, "▲ " + {Q(i, 1)}, {Q(i, 1)})$',
+                 f'$if({NOQ(i)}, "--.--", {Q(i, 1)})$',
                  180, y + 7, 27, "semibold", C["muted"], anchor="TOPRIGHT",
-                 color_formula=color(i), pcolor=pc(i), sample=("▼ " if sq(i, 4) == "-1" else "▲ ") + sq(i, 2) if sq(i, 4) != "0" else sq(i, 2)),
+                 color_formula=color(i), pcolor=pc(i), sample=sq(i, 2)),
             text(f"Percent {i}", f'$if({NOQ(i)}, "--.--%", {Q(i, 2)})$', M, y + 7, 27, "semibold", C["muted"],
                  anchor="TOPRIGHT", color_formula=color(i), pcolor=pc(i), sample=sq(i, 3)),
         ]
@@ -329,8 +340,8 @@ def chart_items():
         rect("Grid bottom", px, py + ph, pw, 2, C["rule"]),
         path("Zero line", px, py, pw, ph, "#FFBDB5A5", f'$tc(split, br(tasker, nx_chart), "|", 5)$',
              stroke=2, sample=sc(5)),
-        text("Y max", f'$if({NOMETA}, "", {MT(3)})$', 0, py - 9, 17, "regular", C["muted"], sample=sm(3)),
-        text("Y min", f'$if({NOMETA}, "", {MT(4)})$', 0, py + ph - 9, 17, "regular", C["muted"], sample=sm(4)),
+        text("Y max", f'$if({NOMETA}, "", {MTX(3)})$', 0, py - 9, 17, "regular", C["muted"], sample=sm(3)),
+        text("Y min", f'$if({NOMETA}, "", {MTX(4)})$', 0, py + ph - 9, 17, "regular", C["muted"], sample=sm(4)),
         text("Y zero", f'$if({NOMETA}, "", "0%")$', 0,
              (py - 9 + ph * float(sm(5)) / 100) if sm(5) else py + ph / 2 - 9, 17, "regular", C["muted"],
              top_formula=f'$if({NOMETA}, {py + ph / 2 - 9}, {py - 9} + {ph} * {MT(5)} / 100)$',
@@ -343,7 +354,7 @@ def chart_items():
     for k in range(5):
         bw = pw / 5
         items.append(box(f"Chart day {k}", px + bw * k, py + ph + 12, bw, 24, lambda k=k, bw=bw: [
-            ctext(f"Day label {k}", f'$if({NOMETA}, "", {MT(6 + k)})$', bw, 0, 17, "regular", C["muted"],
+            ctext(f"Day label {k}", f'$if({NOMETA}, "", {MTX(6 + k)})$', bw, 0, 17, "regular", C["muted"],
                   sample=sm(6 + k))]))
     waiting = box("Chart waiting", px, py + ph / 2 - 16, pw, 32, lambda: [
         ctext("Waiting", "Waiting for stock data from Tasker", pw, 0, 22, "medium", C["muted"],
@@ -362,8 +373,8 @@ def chart_items():
     stale = (f'({MT(1)}="OPEN" & df(S) - {MT(0)} > 2700) | ({MT(1)}="EOD" & df(S) - {MT(0)} > 129600) | '
              f'({MT(1)}="CLOSED" & df(S) - {MT(0)} > 345600)')
     status = (f'$if({NOMETA}, "Not connected yet", {MT(1)}="ERROR", "● Error · last data kept", '
-              f'{stale}, "● Stale data", {MT(1)}="OPEN", "● Market open", {MT(1)}="EOD", "● Close of " + {MT(12)}, '
-              f'"Market closed · " + {MT(12)})$')
+              f'{stale}, "● Stale data", {MT(1)}="OPEN", "● Market open", {MT(1)}="EOD", "● Close of " + {MTX(12)}, '
+              f'"Market closed · " + {MTX(12)})$')
     status_c = (f'$if({NOMETA}, "{C["muted"]}", {MT(1)}="ERROR", "{C["neg"]}", {stale}, "{C["accent"]}", '
                 f'{MT(1)}="OPEN" | {MT(1)}="EOD", "{C["pos"]}", "{C["muted"]}")$')
     st = sm(1)
@@ -406,12 +417,22 @@ def button_items():
         ], events=launch(action, intent)))
     return items
 
+def scaled(group):
+    group.setdefault("internal_toggles", {})["config_scale_value"] = 10
+    group.setdefault("internal_formulas", {})["config_scale_value"] = f"$100*{SCALE}$"
+    return group
+
+def top_block():
+    """Clock, weather and watchlist: a full-width (720) group hanging from the top edge, scaled to the screen."""
+    return [scaled(box("Top block (clock, weather, watchlist)", 0, 0, W, 980,
+                       lambda: clock() + weather() + stocks()))]
+
 def bottom_block():
-    """Chart + legend + footer + buttons, hanging SAFE units above the real bottom
-    edge of the screen, so the buttons never sit under the navigation bar."""
-    top = H - SAFE - BLOCK_H                     # where it lands on a 720x1560 (S22) screen, for the preview
-    return [box("Bottom block (chart + buttons)", M, top, CW, BLOCK_H,
-                lambda: chart_items() + button_items(), bottom=SAFE)]
+    """Chart + legend + footer + buttons: a full-width group hanging SAFE screen units
+    above the real bottom edge, so the buttons never sit under the navigation bar."""
+    top = H - SAFE / PREVIEW_SCALE - BLOCK_H     # where it lands on the S22, for the preview only
+    inner = lambda: [box("Chart and buttons", M, 0, CW, BLOCK_H, lambda: chart_items() + button_items())]
+    return [scaled(box("Bottom block (chart + buttons)", 0, top, W, BLOCK_H, inner, bottom=SAFE))]
 
 # ---------------------------------------------------------------- assemble
 def build():
@@ -419,7 +440,10 @@ def build():
         "internal_type": "RootLayerModule",
         "background_type": "SOLID",
         "background_color": C["bg"],
-        "viewgroup_items": clock() + weather() + stocks() + bottom_block(),
+        "globals_list": {"zoom": {"index": 0, "type": "NUMBER", "title": "Zoom %",
+                              "description": "0 = automatic (fit the screen width). Or set e.g. 120 / 133 / 140.",
+                              "min": 0, "max": 250, "value": 0.0}},
+        "viewgroup_items": top_block() + bottom_block(),
     }
     return {
         "preset_info": {
@@ -479,7 +503,7 @@ def write_preview(path_out, caption=""):
                        f'height="{d["h"]}" viewBox="0 0 100 100" preserveAspectRatio="none">'
                        f'<path d="{d["d"]}" {paint} stroke-linecap="round" stroke-linejoin="round"/></svg>')
     # Not part of the wallpaper: shows where Samsung's 3-button navigation bar (48 dp) sits.
-    nav = 96
+    nav = 48 * 2.5 / PREVIEW_SCALE   # 48 dp at 2.5 units/dp, in design units
     out.append(f'<div style="position:absolute;left:0;right:0;bottom:0;height:{nav}px;background:rgba(37,37,37,.10);'
                f'border-top:2px dashed rgba(37,37,37,.35);font:600 15px Inter;color:#8A8478;display:flex;'
                f'align-items:center;justify-content:center">Samsung navigation bar area (not part of the wallpaper)</div>')

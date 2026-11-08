@@ -200,9 +200,13 @@ var NX = (function () {
     if (Number(s) === 0) return (0).toFixed(digits) + (suffix || "");
     return (v > 0 ? "+" : MINUS) + s + (suffix || "");
   }
+  // The change field is sent ready to display ("▲ +2.69"), because KLWP's "+"
+  // operator would turn "+2.69" into a number and drop the sign.
   function encodeQuote(q) {
     var r2 = Number(q.c.toFixed(2));
-    return [q.p.toFixed(2), signed(q.c, 2), signed(q.pc, 2, "%"), r2 > 0 ? "1" : r2 < 0 ? "-1" : "0", q.d].join(";");
+    var arrow = r2 > 0 ? "\u25B2 " : r2 < 0 ? "\u25BC " : "";
+    return [q.p.toFixed(2), arrow + signed(q.c, 2), signed(q.pc, 2, "%"),
+            r2 > 0 ? "1" : r2 < 0 ? "-1" : "0", q.d || "-"].join(";");
   }
   function quoteFromBars(bars) {
     if (bars.length < 2) return null;
@@ -306,7 +310,7 @@ var NX = (function () {
     SYMBOLS.forEach(function (s) {
       var bars = decodeBars(env.global("NexusBars_" + s));
       var qs = str(env.global(varName(s))).split(";");
-      var quote = qs.length >= 5 && num(qs[0]) > 0 ? { p: num(qs[0]), d: qs[4] } : null;
+      var quote = qs.length >= 5 && num(qs[0]) > 0 && /^\d{4}-\d\d-\d\d$/.test(qs[4]) ? { p: num(qs[0]), d: qs[4] } : null;
       series[s] = prov === "twelvedata" ? sessions(bars, quote) : bars;
       if (series[s].length || quote) haveAny = true;
     });
@@ -339,6 +343,9 @@ var NX = (function () {
                 str(env.global("NexusUpd")) || "--:--"].concat(cm.slice(0, 8))
       .concat([clean(str(env.global("NexusMsg"))), str(env.global("NexusSession")),
                PROVIDERS[providerOf(env)].label]);
+    // KLWP's tc(split) skips empty fields, which would shift every later field:
+    // empty values are sent as "-" and KLWP shows them as blank.
+    meta = meta.map(function (f) { return f === "" ? "-" : f; });
     env.setGlobal("NexusMeta", meta.join("|"));
     return meta;
   }
