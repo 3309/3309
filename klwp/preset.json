@@ -1,0 +1,2054 @@
+{
+  "preset_info": {
+    "version": 13,
+    "title": "NEXUS",
+    "description": "Markets & weather dashboard (clock, 5-day forecast, watchlist, 5-day chart).",
+    "author": "NEXUS",
+    "email": "",
+    "archive": "",
+    "features": "LOCATION WEATHER",
+    "release": 376417910,
+    "locked": false,
+    "pflags": 0,
+    "width": 1080,
+    "height": 2340,
+    "xscreens": 0,
+    "yscreens": 0
+  },
+  "preset_root": {
+    "internal_type": "RootLayerModule",
+    "background_type": "SOLID",
+    "background_color": "#FFF5F1E8",
+    "viewgroup_items": [
+      {
+        "internal_type": "TextModule",
+        "internal_title": "Brand",
+        "text_expression": "NEXUS[c=#E88A42].[/c]",
+        "text_size": 24.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-ExtraBold.otf",
+        "paint_color": "#FF252525",
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 40.0,
+        "position_padding_top": 88.0
+      },
+      {
+        "internal_type": "TextModule",
+        "internal_title": "Kicker",
+        "text_expression": "MARKETS & WEATHER",
+        "text_size": 19.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-SemiBold.otf",
+        "paint_color": "#FF8A8478",
+        "position_anchor": "TOPRIGHT",
+        "position_padding_right": 40.0,
+        "position_padding_top": 92.0
+      },
+      {
+        "internal_type": "ShapeModule",
+        "internal_title": "Heavy rule",
+        "shape_type": "RECT",
+        "shape_width": 640.0,
+        "shape_height": 4.0,
+        "paint_color": "#FF252525",
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 40.0,
+        "position_padding_top": 128.0
+      },
+      {
+        "internal_type": "StackLayerModule",
+        "internal_title": "Time row",
+        "viewgroup_items": [
+          {
+            "internal_type": "TextModule",
+            "internal_title": "Time",
+            "text_expression": "$df(h:mm)$",
+            "text_size": 170.0,
+            "text_family": "kfile://org.kustom.provider/fonts/InterDisplay-Light.otf",
+            "paint_color": "#FF252525"
+          },
+          {
+            "internal_type": "TextModule",
+            "internal_title": "AM/PM",
+            "text_expression": "$df(a)$",
+            "text_size": 44.0,
+            "text_family": "kfile://org.kustom.provider/fonts/Inter-Medium.otf",
+            "paint_color": "#FF8A8478"
+          }
+        ],
+        "config_stacking": "HORIZONTAL_BOTTOM",
+        "config_margin": 10.0,
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 34.0,
+        "position_padding_top": 138.0
+      },
+      {
+        "internal_type": "TextModule",
+        "internal_title": "Weekday",
+        "text_expression": "$df(EEEE)$",
+        "text_size": 42.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-Bold.otf",
+        "paint_color": "#FF252525",
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 40.0,
+        "position_padding_top": 324.0
+      },
+      {
+        "internal_type": "TextModule",
+        "internal_title": "Date",
+        "text_expression": "$df(\"d MMMM yyyy\")$",
+        "text_size": 29.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-Regular.otf",
+        "paint_color": "#FF8A8478",
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 40.0,
+        "position_padding_top": 380.0
+      },
+      {
+        "internal_type": "TextModule",
+        "internal_title": "Weather label",
+        "text_expression": "5-DAY FORECAST",
+        "text_size": 19.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-SemiBold.otf",
+        "paint_color": "#FF8A8478",
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 40.0,
+        "position_padding_top": 452.0
+      },
+      {
+        "internal_type": "TextModule",
+        "internal_title": "Weather label rain",
+        "text_expression": "RAIN %",
+        "text_size": 19.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-SemiBold.otf",
+        "paint_color": "#FF8A8478",
+        "position_anchor": "TOPRIGHT",
+        "position_padding_right": 40.0,
+        "position_padding_top": 452.0
+      },
+      {
+        "internal_type": "ShapeModule",
+        "internal_title": "Weather rule",
+        "shape_type": "RECT",
+        "shape_width": 640.0,
+        "shape_height": 2.0,
+        "paint_color": "#FFD9D2C3",
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 40.0,
+        "position_padding_top": 486.0
+      },
+      {
+        "internal_type": "OverlapLayerModule",
+        "internal_title": "Weather day 0",
+        "viewgroup_items": [
+          {
+            "internal_type": "ShapeModule",
+            "internal_title": "Weather day 0 area",
+            "shape_type": "RECT",
+            "shape_width": 128.0,
+            "shape_height": 214.0,
+            "paint_color": "#00000000",
+            "position_anchor": "TOPLEFT",
+            "position_padding_left": 0.0,
+            "position_padding_top": 0.0
+          },
+          {
+            "internal_type": "TextModule",
+            "internal_title": "Day 0",
+            "text_expression": "$tc(up, df(EEE))$",
+            "text_size": 23.0,
+            "text_family": "kfile://org.kustom.provider/fonts/Inter-Bold.otf",
+            "paint_color": "#FF252525",
+            "position_anchor": "TOP",
+            "position_padding_top": 0.0
+          },
+          {
+            "internal_type": "TextModule",
+            "internal_title": "Date 0",
+            "text_expression": "$df(\"d MMM\")$",
+            "text_size": 20.0,
+            "text_family": "kfile://org.kustom.provider/fonts/Inter-Regular.otf",
+            "paint_color": "#FF8A8478",
+            "position_anchor": "TOP",
+            "position_padding_top": 30.0
+          },
+          {
+            "internal_type": "ShapeModule",
+            "internal_title": "Icon sun 0",
+            "shape_type": "PATH",
+            "shape_width": 52.0,
+            "shape_height": 52.0,
+            "paint_color": "#FFE88A42",
+            "shape_path": "M 0,0",
+            "internal_toggles": {
+              "shape_path": 10
+            },
+            "internal_formulas": {
+              "shape_path": "$if(wf(icon, 0)=\"CLEAR\", \"M 32,50 A 18,18 0 1,1 68,50 A 18,18 0 1,1 32,50 Z M 50,6 L 50,18 M 50,82 L 50,94 M 6,50 L 18,50 M 82,50 L 94,50 M 19,19 L 27,27 M 73,73 L 81,81 M 19,81 L 27,73 M 73,27 L 81,19\", wf(icon, 0)=\"PCLOUDY\", \"M 22,34 A 12,12 0 1,1 46,34 A 12,12 0 1,1 22,34 Z M 34,8 L 34,15 M 8,34 L 15,34 M 16,16 L 21,21 M 52,16 L 47,21\", \"M 0,0\")$"
+            },
+            "paint_style": "STROKE",
+            "paint_stroke": 4.0,
+            "position_anchor": "TOPLEFT",
+            "position_padding_left": 38.0,
+            "position_padding_top": 62.0
+          },
+          {
+            "internal_type": "ShapeModule",
+            "internal_title": "Icon cloud fill 0",
+            "shape_type": "PATH",
+            "shape_width": 52.0,
+            "shape_height": 52.0,
+            "paint_color": "#FFF5F1E8",
+            "shape_path": "M 0,0",
+            "internal_toggles": {
+              "shape_path": 10
+            },
+            "internal_formulas": {
+              "shape_path": "$if(wf(icon, 0)=\"CLEAR\", \"M 0,0\", wf(icon, 0)=\"PCLOUDY\", \"M 38,86 L 82,86 A 12,12 0 0,0 84,62 A 19,19 0 0,0 47,60 A 13,13 0 0,0 38,86 Z\", wf(icon, 0)=\"TSTORM\" | wf(icon, 0)=\"TSHOWER\" | wf(icon, 0)=\"SHOWER\" | wf(icon, 0)=\"RAIN\" | wf(icon, 0)=\"TORNADO\" | wf(icon, 0)=\"SLEET\" | wf(icon, 0)=\"LSNOW\" | wf(icon, 0)=\"SNOW\" | wf(icon, 0)=\"HAIL\", \"M 26,62 L 74,62 A 14,14 0 0,0 77,34 A 22,22 0 0,0 35,32 A 15,15 0 0,0 26,62 Z\", \"M 26,76 L 74,76 A 14,14 0 0,0 77,48 A 22,22 0 0,0 35,46 A 15,15 0 0,0 26,76 Z\")$"
+            },
+            "position_anchor": "TOPLEFT",
+            "position_padding_left": 38.0,
+            "position_padding_top": 62.0
+          },
+          {
+            "internal_type": "ShapeModule",
+            "internal_title": "Icon cloud 0",
+            "shape_type": "PATH",
+            "shape_width": 52.0,
+            "shape_height": 52.0,
+            "paint_color": "#FF252525",
+            "shape_path": "M 0,0",
+            "internal_toggles": {
+              "shape_path": 10
+            },
+            "internal_formulas": {
+              "shape_path": "$if(wf(icon, 0)=\"CLEAR\", \"M 0,0\", wf(icon, 0)=\"PCLOUDY\", \"M 38,86 L 82,86 A 12,12 0 0,0 84,62 A 19,19 0 0,0 47,60 A 13,13 0 0,0 38,86 Z\", wf(icon, 0)=\"TSTORM\" | wf(icon, 0)=\"TSHOWER\" | wf(icon, 0)=\"SHOWER\" | wf(icon, 0)=\"RAIN\" | wf(icon, 0)=\"TORNADO\" | wf(icon, 0)=\"SLEET\" | wf(icon, 0)=\"LSNOW\" | wf(icon, 0)=\"SNOW\" | wf(icon, 0)=\"HAIL\", \"M 26,62 L 74,62 A 14,14 0 0,0 77,34 A 22,22 0 0,0 35,32 A 15,15 0 0,0 26,62 Z\", \"M 26,76 L 74,76 A 14,14 0 0,0 77,48 A 22,22 0 0,0 35,46 A 15,15 0 0,0 26,76 Z\")$"
+            },
+            "paint_style": "STROKE",
+            "paint_stroke": 4.0,
+            "position_anchor": "TOPLEFT",
+            "position_padding_left": 38.0,
+            "position_padding_top": 62.0
+          },
+          {
+            "internal_type": "ShapeModule",
+            "internal_title": "Icon drops 0",
+            "shape_type": "PATH",
+            "shape_width": 52.0,
+            "shape_height": 52.0,
+            "paint_color": "#FF75B9D5",
+            "shape_path": "M 0,0",
+            "internal_toggles": {
+              "shape_path": 10
+            },
+            "internal_formulas": {
+              "shape_path": "$if(wf(icon, 0)=\"TSTORM\" | wf(icon, 0)=\"TSHOWER\" | wf(icon, 0)=\"SHOWER\" | wf(icon, 0)=\"RAIN\" | wf(icon, 0)=\"TORNADO\", \"M 37,74 L 33,90 M 53,74 L 49,90 M 69,74 L 65,90\", wf(icon, 0)=\"SLEET\" | wf(icon, 0)=\"LSNOW\" | wf(icon, 0)=\"SNOW\" | wf(icon, 0)=\"HAIL\", \"M 34,76 L 34,80 M 50,82 L 50,86 M 66,76 L 66,80 M 42,90 L 42,94 M 58,90 L 58,94\", \"M 0,0\")$"
+            },
+            "paint_style": "STROKE",
+            "paint_stroke": 4.0,
+            "position_anchor": "TOPLEFT",
+            "position_padding_left": 38.0,
+            "position_padding_top": 62.0
+          },
+          {
+            "internal_type": "TextModule",
+            "internal_title": "High 0",
+            "text_expression": "$wf(max, 0)$°",
+            "text_size": 31.0,
+            "text_family": "kfile://org.kustom.provider/fonts/Inter-Bold.otf",
+            "paint_color": "#FF252525",
+            "position_anchor": "TOP",
+            "position_padding_top": 122.0
+          },
+          {
+            "internal_type": "TextModule",
+            "internal_title": "Low 0",
+            "text_expression": "$wf(min, 0)$°",
+            "text_size": 24.0,
+            "text_family": "kfile://org.kustom.provider/fonts/Inter-Regular.otf",
+            "paint_color": "#FF8A8478",
+            "position_anchor": "TOP",
+            "position_padding_top": 160.0
+          },
+          {
+            "internal_type": "TextModule",
+            "internal_title": "Rain 0",
+            "text_expression": "$wf(rainc, 0)$%",
+            "text_size": 21.0,
+            "text_family": "kfile://org.kustom.provider/fonts/Inter-SemiBold.otf",
+            "paint_color": "#FF75B9D5",
+            "position_anchor": "TOP",
+            "position_padding_top": 192.0
+          }
+        ],
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 40.0,
+        "position_padding_top": 508.0
+      },
+      {
+        "internal_type": "ShapeModule",
+        "internal_title": "Weather divider 1",
+        "shape_type": "RECT",
+        "shape_width": 2.0,
+        "shape_height": 214.0,
+        "paint_color": "#FFD9D2C3",
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 168.0,
+        "position_padding_top": 508.0
+      },
+      {
+        "internal_type": "OverlapLayerModule",
+        "internal_title": "Weather day 1",
+        "viewgroup_items": [
+          {
+            "internal_type": "ShapeModule",
+            "internal_title": "Weather day 1 area",
+            "shape_type": "RECT",
+            "shape_width": 128.0,
+            "shape_height": 214.0,
+            "paint_color": "#00000000",
+            "position_anchor": "TOPLEFT",
+            "position_padding_left": 0.0,
+            "position_padding_top": 0.0
+          },
+          {
+            "internal_type": "TextModule",
+            "internal_title": "Day 1",
+            "text_expression": "$tc(up, df(EEE, a1d))$",
+            "text_size": 23.0,
+            "text_family": "kfile://org.kustom.provider/fonts/Inter-Bold.otf",
+            "paint_color": "#FF252525",
+            "position_anchor": "TOP",
+            "position_padding_top": 0.0
+          },
+          {
+            "internal_type": "TextModule",
+            "internal_title": "Date 1",
+            "text_expression": "$df(\"d MMM\", a1d)$",
+            "text_size": 20.0,
+            "text_family": "kfile://org.kustom.provider/fonts/Inter-Regular.otf",
+            "paint_color": "#FF8A8478",
+            "position_anchor": "TOP",
+            "position_padding_top": 30.0
+          },
+          {
+            "internal_type": "ShapeModule",
+            "internal_title": "Icon sun 1",
+            "shape_type": "PATH",
+            "shape_width": 52.0,
+            "shape_height": 52.0,
+            "paint_color": "#FFE88A42",
+            "shape_path": "M 0,0",
+            "internal_toggles": {
+              "shape_path": 10
+            },
+            "internal_formulas": {
+              "shape_path": "$if(wf(icon, 1)=\"CLEAR\", \"M 32,50 A 18,18 0 1,1 68,50 A 18,18 0 1,1 32,50 Z M 50,6 L 50,18 M 50,82 L 50,94 M 6,50 L 18,50 M 82,50 L 94,50 M 19,19 L 27,27 M 73,73 L 81,81 M 19,81 L 27,73 M 73,27 L 81,19\", wf(icon, 1)=\"PCLOUDY\", \"M 22,34 A 12,12 0 1,1 46,34 A 12,12 0 1,1 22,34 Z M 34,8 L 34,15 M 8,34 L 15,34 M 16,16 L 21,21 M 52,16 L 47,21\", \"M 0,0\")$"
+            },
+            "paint_style": "STROKE",
+            "paint_stroke": 4.0,
+            "position_anchor": "TOPLEFT",
+            "position_padding_left": 38.0,
+            "position_padding_top": 62.0
+          },
+          {
+            "internal_type": "ShapeModule",
+            "internal_title": "Icon cloud fill 1",
+            "shape_type": "PATH",
+            "shape_width": 52.0,
+            "shape_height": 52.0,
+            "paint_color": "#FFF5F1E8",
+            "shape_path": "M 0,0",
+            "internal_toggles": {
+              "shape_path": 10
+            },
+            "internal_formulas": {
+              "shape_path": "$if(wf(icon, 1)=\"CLEAR\", \"M 0,0\", wf(icon, 1)=\"PCLOUDY\", \"M 38,86 L 82,86 A 12,12 0 0,0 84,62 A 19,19 0 0,0 47,60 A 13,13 0 0,0 38,86 Z\", wf(icon, 1)=\"TSTORM\" | wf(icon, 1)=\"TSHOWER\" | wf(icon, 1)=\"SHOWER\" | wf(icon, 1)=\"RAIN\" | wf(icon, 1)=\"TORNADO\" | wf(icon, 1)=\"SLEET\" | wf(icon, 1)=\"LSNOW\" | wf(icon, 1)=\"SNOW\" | wf(icon, 1)=\"HAIL\", \"M 26,62 L 74,62 A 14,14 0 0,0 77,34 A 22,22 0 0,0 35,32 A 15,15 0 0,0 26,62 Z\", \"M 26,76 L 74,76 A 14,14 0 0,0 77,48 A 22,22 0 0,0 35,46 A 15,15 0 0,0 26,76 Z\")$"
+            },
+            "position_anchor": "TOPLEFT",
+            "position_padding_left": 38.0,
+            "position_padding_top": 62.0
+          },
+          {
+            "internal_type": "ShapeModule",
+            "internal_title": "Icon cloud 1",
+            "shape_type": "PATH",
+            "shape_width": 52.0,
+            "shape_height": 52.0,
+            "paint_color": "#FF252525",
+            "shape_path": "M 0,0",
+            "internal_toggles": {
+              "shape_path": 10
+            },
+            "internal_formulas": {
+              "shape_path": "$if(wf(icon, 1)=\"CLEAR\", \"M 0,0\", wf(icon, 1)=\"PCLOUDY\", \"M 38,86 L 82,86 A 12,12 0 0,0 84,62 A 19,19 0 0,0 47,60 A 13,13 0 0,0 38,86 Z\", wf(icon, 1)=\"TSTORM\" | wf(icon, 1)=\"TSHOWER\" | wf(icon, 1)=\"SHOWER\" | wf(icon, 1)=\"RAIN\" | wf(icon, 1)=\"TORNADO\" | wf(icon, 1)=\"SLEET\" | wf(icon, 1)=\"LSNOW\" | wf(icon, 1)=\"SNOW\" | wf(icon, 1)=\"HAIL\", \"M 26,62 L 74,62 A 14,14 0 0,0 77,34 A 22,22 0 0,0 35,32 A 15,15 0 0,0 26,62 Z\", \"M 26,76 L 74,76 A 14,14 0 0,0 77,48 A 22,22 0 0,0 35,46 A 15,15 0 0,0 26,76 Z\")$"
+            },
+            "paint_style": "STROKE",
+            "paint_stroke": 4.0,
+            "position_anchor": "TOPLEFT",
+            "position_padding_left": 38.0,
+            "position_padding_top": 62.0
+          },
+          {
+            "internal_type": "ShapeModule",
+            "internal_title": "Icon drops 1",
+            "shape_type": "PATH",
+            "shape_width": 52.0,
+            "shape_height": 52.0,
+            "paint_color": "#FF75B9D5",
+            "shape_path": "M 0,0",
+            "internal_toggles": {
+              "shape_path": 10
+            },
+            "internal_formulas": {
+              "shape_path": "$if(wf(icon, 1)=\"TSTORM\" | wf(icon, 1)=\"TSHOWER\" | wf(icon, 1)=\"SHOWER\" | wf(icon, 1)=\"RAIN\" | wf(icon, 1)=\"TORNADO\", \"M 37,74 L 33,90 M 53,74 L 49,90 M 69,74 L 65,90\", wf(icon, 1)=\"SLEET\" | wf(icon, 1)=\"LSNOW\" | wf(icon, 1)=\"SNOW\" | wf(icon, 1)=\"HAIL\", \"M 34,76 L 34,80 M 50,82 L 50,86 M 66,76 L 66,80 M 42,90 L 42,94 M 58,90 L 58,94\", \"M 0,0\")$"
+            },
+            "paint_style": "STROKE",
+            "paint_stroke": 4.0,
+            "position_anchor": "TOPLEFT",
+            "position_padding_left": 38.0,
+            "position_padding_top": 62.0
+          },
+          {
+            "internal_type": "TextModule",
+            "internal_title": "High 1",
+            "text_expression": "$wf(max, 1)$°",
+            "text_size": 31.0,
+            "text_family": "kfile://org.kustom.provider/fonts/Inter-Bold.otf",
+            "paint_color": "#FF252525",
+            "position_anchor": "TOP",
+            "position_padding_top": 122.0
+          },
+          {
+            "internal_type": "TextModule",
+            "internal_title": "Low 1",
+            "text_expression": "$wf(min, 1)$°",
+            "text_size": 24.0,
+            "text_family": "kfile://org.kustom.provider/fonts/Inter-Regular.otf",
+            "paint_color": "#FF8A8478",
+            "position_anchor": "TOP",
+            "position_padding_top": 160.0
+          },
+          {
+            "internal_type": "TextModule",
+            "internal_title": "Rain 1",
+            "text_expression": "$wf(rainc, 1)$%",
+            "text_size": 21.0,
+            "text_family": "kfile://org.kustom.provider/fonts/Inter-SemiBold.otf",
+            "paint_color": "#FF75B9D5",
+            "position_anchor": "TOP",
+            "position_padding_top": 192.0
+          }
+        ],
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 168.0,
+        "position_padding_top": 508.0
+      },
+      {
+        "internal_type": "ShapeModule",
+        "internal_title": "Weather divider 2",
+        "shape_type": "RECT",
+        "shape_width": 2.0,
+        "shape_height": 214.0,
+        "paint_color": "#FFD9D2C3",
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 296.0,
+        "position_padding_top": 508.0
+      },
+      {
+        "internal_type": "OverlapLayerModule",
+        "internal_title": "Weather day 2",
+        "viewgroup_items": [
+          {
+            "internal_type": "ShapeModule",
+            "internal_title": "Weather day 2 area",
+            "shape_type": "RECT",
+            "shape_width": 128.0,
+            "shape_height": 214.0,
+            "paint_color": "#00000000",
+            "position_anchor": "TOPLEFT",
+            "position_padding_left": 0.0,
+            "position_padding_top": 0.0
+          },
+          {
+            "internal_type": "TextModule",
+            "internal_title": "Day 2",
+            "text_expression": "$tc(up, df(EEE, a2d))$",
+            "text_size": 23.0,
+            "text_family": "kfile://org.kustom.provider/fonts/Inter-Bold.otf",
+            "paint_color": "#FF252525",
+            "position_anchor": "TOP",
+            "position_padding_top": 0.0
+          },
+          {
+            "internal_type": "TextModule",
+            "internal_title": "Date 2",
+            "text_expression": "$df(\"d MMM\", a2d)$",
+            "text_size": 20.0,
+            "text_family": "kfile://org.kustom.provider/fonts/Inter-Regular.otf",
+            "paint_color": "#FF8A8478",
+            "position_anchor": "TOP",
+            "position_padding_top": 30.0
+          },
+          {
+            "internal_type": "ShapeModule",
+            "internal_title": "Icon sun 2",
+            "shape_type": "PATH",
+            "shape_width": 52.0,
+            "shape_height": 52.0,
+            "paint_color": "#FFE88A42",
+            "shape_path": "M 0,0",
+            "internal_toggles": {
+              "shape_path": 10
+            },
+            "internal_formulas": {
+              "shape_path": "$if(wf(icon, 2)=\"CLEAR\", \"M 32,50 A 18,18 0 1,1 68,50 A 18,18 0 1,1 32,50 Z M 50,6 L 50,18 M 50,82 L 50,94 M 6,50 L 18,50 M 82,50 L 94,50 M 19,19 L 27,27 M 73,73 L 81,81 M 19,81 L 27,73 M 73,27 L 81,19\", wf(icon, 2)=\"PCLOUDY\", \"M 22,34 A 12,12 0 1,1 46,34 A 12,12 0 1,1 22,34 Z M 34,8 L 34,15 M 8,34 L 15,34 M 16,16 L 21,21 M 52,16 L 47,21\", \"M 0,0\")$"
+            },
+            "paint_style": "STROKE",
+            "paint_stroke": 4.0,
+            "position_anchor": "TOPLEFT",
+            "position_padding_left": 38.0,
+            "position_padding_top": 62.0
+          },
+          {
+            "internal_type": "ShapeModule",
+            "internal_title": "Icon cloud fill 2",
+            "shape_type": "PATH",
+            "shape_width": 52.0,
+            "shape_height": 52.0,
+            "paint_color": "#FFF5F1E8",
+            "shape_path": "M 0,0",
+            "internal_toggles": {
+              "shape_path": 10
+            },
+            "internal_formulas": {
+              "shape_path": "$if(wf(icon, 2)=\"CLEAR\", \"M 0,0\", wf(icon, 2)=\"PCLOUDY\", \"M 38,86 L 82,86 A 12,12 0 0,0 84,62 A 19,19 0 0,0 47,60 A 13,13 0 0,0 38,86 Z\", wf(icon, 2)=\"TSTORM\" | wf(icon, 2)=\"TSHOWER\" | wf(icon, 2)=\"SHOWER\" | wf(icon, 2)=\"RAIN\" | wf(icon, 2)=\"TORNADO\" | wf(icon, 2)=\"SLEET\" | wf(icon, 2)=\"LSNOW\" | wf(icon, 2)=\"SNOW\" | wf(icon, 2)=\"HAIL\", \"M 26,62 L 74,62 A 14,14 0 0,0 77,34 A 22,22 0 0,0 35,32 A 15,15 0 0,0 26,62 Z\", \"M 26,76 L 74,76 A 14,14 0 0,0 77,48 A 22,22 0 0,0 35,46 A 15,15 0 0,0 26,76 Z\")$"
+            },
+            "position_anchor": "TOPLEFT",
+            "position_padding_left": 38.0,
+            "position_padding_top": 62.0
+          },
+          {
+            "internal_type": "ShapeModule",
+            "internal_title": "Icon cloud 2",
+            "shape_type": "PATH",
+            "shape_width": 52.0,
+            "shape_height": 52.0,
+            "paint_color": "#FF252525",
+            "shape_path": "M 0,0",
+            "internal_toggles": {
+              "shape_path": 10
+            },
+            "internal_formulas": {
+              "shape_path": "$if(wf(icon, 2)=\"CLEAR\", \"M 0,0\", wf(icon, 2)=\"PCLOUDY\", \"M 38,86 L 82,86 A 12,12 0 0,0 84,62 A 19,19 0 0,0 47,60 A 13,13 0 0,0 38,86 Z\", wf(icon, 2)=\"TSTORM\" | wf(icon, 2)=\"TSHOWER\" | wf(icon, 2)=\"SHOWER\" | wf(icon, 2)=\"RAIN\" | wf(icon, 2)=\"TORNADO\" | wf(icon, 2)=\"SLEET\" | wf(icon, 2)=\"LSNOW\" | wf(icon, 2)=\"SNOW\" | wf(icon, 2)=\"HAIL\", \"M 26,62 L 74,62 A 14,14 0 0,0 77,34 A 22,22 0 0,0 35,32 A 15,15 0 0,0 26,62 Z\", \"M 26,76 L 74,76 A 14,14 0 0,0 77,48 A 22,22 0 0,0 35,46 A 15,15 0 0,0 26,76 Z\")$"
+            },
+            "paint_style": "STROKE",
+            "paint_stroke": 4.0,
+            "position_anchor": "TOPLEFT",
+            "position_padding_left": 38.0,
+            "position_padding_top": 62.0
+          },
+          {
+            "internal_type": "ShapeModule",
+            "internal_title": "Icon drops 2",
+            "shape_type": "PATH",
+            "shape_width": 52.0,
+            "shape_height": 52.0,
+            "paint_color": "#FF75B9D5",
+            "shape_path": "M 0,0",
+            "internal_toggles": {
+              "shape_path": 10
+            },
+            "internal_formulas": {
+              "shape_path": "$if(wf(icon, 2)=\"TSTORM\" | wf(icon, 2)=\"TSHOWER\" | wf(icon, 2)=\"SHOWER\" | wf(icon, 2)=\"RAIN\" | wf(icon, 2)=\"TORNADO\", \"M 37,74 L 33,90 M 53,74 L 49,90 M 69,74 L 65,90\", wf(icon, 2)=\"SLEET\" | wf(icon, 2)=\"LSNOW\" | wf(icon, 2)=\"SNOW\" | wf(icon, 2)=\"HAIL\", \"M 34,76 L 34,80 M 50,82 L 50,86 M 66,76 L 66,80 M 42,90 L 42,94 M 58,90 L 58,94\", \"M 0,0\")$"
+            },
+            "paint_style": "STROKE",
+            "paint_stroke": 4.0,
+            "position_anchor": "TOPLEFT",
+            "position_padding_left": 38.0,
+            "position_padding_top": 62.0
+          },
+          {
+            "internal_type": "TextModule",
+            "internal_title": "High 2",
+            "text_expression": "$wf(max, 2)$°",
+            "text_size": 31.0,
+            "text_family": "kfile://org.kustom.provider/fonts/Inter-Bold.otf",
+            "paint_color": "#FF252525",
+            "position_anchor": "TOP",
+            "position_padding_top": 122.0
+          },
+          {
+            "internal_type": "TextModule",
+            "internal_title": "Low 2",
+            "text_expression": "$wf(min, 2)$°",
+            "text_size": 24.0,
+            "text_family": "kfile://org.kustom.provider/fonts/Inter-Regular.otf",
+            "paint_color": "#FF8A8478",
+            "position_anchor": "TOP",
+            "position_padding_top": 160.0
+          },
+          {
+            "internal_type": "TextModule",
+            "internal_title": "Rain 2",
+            "text_expression": "$wf(rainc, 2)$%",
+            "text_size": 21.0,
+            "text_family": "kfile://org.kustom.provider/fonts/Inter-SemiBold.otf",
+            "paint_color": "#FF75B9D5",
+            "position_anchor": "TOP",
+            "position_padding_top": 192.0
+          }
+        ],
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 296.0,
+        "position_padding_top": 508.0
+      },
+      {
+        "internal_type": "ShapeModule",
+        "internal_title": "Weather divider 3",
+        "shape_type": "RECT",
+        "shape_width": 2.0,
+        "shape_height": 214.0,
+        "paint_color": "#FFD9D2C3",
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 424.0,
+        "position_padding_top": 508.0
+      },
+      {
+        "internal_type": "OverlapLayerModule",
+        "internal_title": "Weather day 3",
+        "viewgroup_items": [
+          {
+            "internal_type": "ShapeModule",
+            "internal_title": "Weather day 3 area",
+            "shape_type": "RECT",
+            "shape_width": 128.0,
+            "shape_height": 214.0,
+            "paint_color": "#00000000",
+            "position_anchor": "TOPLEFT",
+            "position_padding_left": 0.0,
+            "position_padding_top": 0.0
+          },
+          {
+            "internal_type": "TextModule",
+            "internal_title": "Day 3",
+            "text_expression": "$tc(up, df(EEE, a3d))$",
+            "text_size": 23.0,
+            "text_family": "kfile://org.kustom.provider/fonts/Inter-Bold.otf",
+            "paint_color": "#FF252525",
+            "position_anchor": "TOP",
+            "position_padding_top": 0.0
+          },
+          {
+            "internal_type": "TextModule",
+            "internal_title": "Date 3",
+            "text_expression": "$df(\"d MMM\", a3d)$",
+            "text_size": 20.0,
+            "text_family": "kfile://org.kustom.provider/fonts/Inter-Regular.otf",
+            "paint_color": "#FF8A8478",
+            "position_anchor": "TOP",
+            "position_padding_top": 30.0
+          },
+          {
+            "internal_type": "ShapeModule",
+            "internal_title": "Icon sun 3",
+            "shape_type": "PATH",
+            "shape_width": 52.0,
+            "shape_height": 52.0,
+            "paint_color": "#FFE88A42",
+            "shape_path": "M 0,0",
+            "internal_toggles": {
+              "shape_path": 10
+            },
+            "internal_formulas": {
+              "shape_path": "$if(wf(icon, 3)=\"CLEAR\", \"M 32,50 A 18,18 0 1,1 68,50 A 18,18 0 1,1 32,50 Z M 50,6 L 50,18 M 50,82 L 50,94 M 6,50 L 18,50 M 82,50 L 94,50 M 19,19 L 27,27 M 73,73 L 81,81 M 19,81 L 27,73 M 73,27 L 81,19\", wf(icon, 3)=\"PCLOUDY\", \"M 22,34 A 12,12 0 1,1 46,34 A 12,12 0 1,1 22,34 Z M 34,8 L 34,15 M 8,34 L 15,34 M 16,16 L 21,21 M 52,16 L 47,21\", \"M 0,0\")$"
+            },
+            "paint_style": "STROKE",
+            "paint_stroke": 4.0,
+            "position_anchor": "TOPLEFT",
+            "position_padding_left": 38.0,
+            "position_padding_top": 62.0
+          },
+          {
+            "internal_type": "ShapeModule",
+            "internal_title": "Icon cloud fill 3",
+            "shape_type": "PATH",
+            "shape_width": 52.0,
+            "shape_height": 52.0,
+            "paint_color": "#FFF5F1E8",
+            "shape_path": "M 0,0",
+            "internal_toggles": {
+              "shape_path": 10
+            },
+            "internal_formulas": {
+              "shape_path": "$if(wf(icon, 3)=\"CLEAR\", \"M 0,0\", wf(icon, 3)=\"PCLOUDY\", \"M 38,86 L 82,86 A 12,12 0 0,0 84,62 A 19,19 0 0,0 47,60 A 13,13 0 0,0 38,86 Z\", wf(icon, 3)=\"TSTORM\" | wf(icon, 3)=\"TSHOWER\" | wf(icon, 3)=\"SHOWER\" | wf(icon, 3)=\"RAIN\" | wf(icon, 3)=\"TORNADO\" | wf(icon, 3)=\"SLEET\" | wf(icon, 3)=\"LSNOW\" | wf(icon, 3)=\"SNOW\" | wf(icon, 3)=\"HAIL\", \"M 26,62 L 74,62 A 14,14 0 0,0 77,34 A 22,22 0 0,0 35,32 A 15,15 0 0,0 26,62 Z\", \"M 26,76 L 74,76 A 14,14 0 0,0 77,48 A 22,22 0 0,0 35,46 A 15,15 0 0,0 26,76 Z\")$"
+            },
+            "position_anchor": "TOPLEFT",
+            "position_padding_left": 38.0,
+            "position_padding_top": 62.0
+          },
+          {
+            "internal_type": "ShapeModule",
+            "internal_title": "Icon cloud 3",
+            "shape_type": "PATH",
+            "shape_width": 52.0,
+            "shape_height": 52.0,
+            "paint_color": "#FF252525",
+            "shape_path": "M 0,0",
+            "internal_toggles": {
+              "shape_path": 10
+            },
+            "internal_formulas": {
+              "shape_path": "$if(wf(icon, 3)=\"CLEAR\", \"M 0,0\", wf(icon, 3)=\"PCLOUDY\", \"M 38,86 L 82,86 A 12,12 0 0,0 84,62 A 19,19 0 0,0 47,60 A 13,13 0 0,0 38,86 Z\", wf(icon, 3)=\"TSTORM\" | wf(icon, 3)=\"TSHOWER\" | wf(icon, 3)=\"SHOWER\" | wf(icon, 3)=\"RAIN\" | wf(icon, 3)=\"TORNADO\" | wf(icon, 3)=\"SLEET\" | wf(icon, 3)=\"LSNOW\" | wf(icon, 3)=\"SNOW\" | wf(icon, 3)=\"HAIL\", \"M 26,62 L 74,62 A 14,14 0 0,0 77,34 A 22,22 0 0,0 35,32 A 15,15 0 0,0 26,62 Z\", \"M 26,76 L 74,76 A 14,14 0 0,0 77,48 A 22,22 0 0,0 35,46 A 15,15 0 0,0 26,76 Z\")$"
+            },
+            "paint_style": "STROKE",
+            "paint_stroke": 4.0,
+            "position_anchor": "TOPLEFT",
+            "position_padding_left": 38.0,
+            "position_padding_top": 62.0
+          },
+          {
+            "internal_type": "ShapeModule",
+            "internal_title": "Icon drops 3",
+            "shape_type": "PATH",
+            "shape_width": 52.0,
+            "shape_height": 52.0,
+            "paint_color": "#FF75B9D5",
+            "shape_path": "M 0,0",
+            "internal_toggles": {
+              "shape_path": 10
+            },
+            "internal_formulas": {
+              "shape_path": "$if(wf(icon, 3)=\"TSTORM\" | wf(icon, 3)=\"TSHOWER\" | wf(icon, 3)=\"SHOWER\" | wf(icon, 3)=\"RAIN\" | wf(icon, 3)=\"TORNADO\", \"M 37,74 L 33,90 M 53,74 L 49,90 M 69,74 L 65,90\", wf(icon, 3)=\"SLEET\" | wf(icon, 3)=\"LSNOW\" | wf(icon, 3)=\"SNOW\" | wf(icon, 3)=\"HAIL\", \"M 34,76 L 34,80 M 50,82 L 50,86 M 66,76 L 66,80 M 42,90 L 42,94 M 58,90 L 58,94\", \"M 0,0\")$"
+            },
+            "paint_style": "STROKE",
+            "paint_stroke": 4.0,
+            "position_anchor": "TOPLEFT",
+            "position_padding_left": 38.0,
+            "position_padding_top": 62.0
+          },
+          {
+            "internal_type": "TextModule",
+            "internal_title": "High 3",
+            "text_expression": "$wf(max, 3)$°",
+            "text_size": 31.0,
+            "text_family": "kfile://org.kustom.provider/fonts/Inter-Bold.otf",
+            "paint_color": "#FF252525",
+            "position_anchor": "TOP",
+            "position_padding_top": 122.0
+          },
+          {
+            "internal_type": "TextModule",
+            "internal_title": "Low 3",
+            "text_expression": "$wf(min, 3)$°",
+            "text_size": 24.0,
+            "text_family": "kfile://org.kustom.provider/fonts/Inter-Regular.otf",
+            "paint_color": "#FF8A8478",
+            "position_anchor": "TOP",
+            "position_padding_top": 160.0
+          },
+          {
+            "internal_type": "TextModule",
+            "internal_title": "Rain 3",
+            "text_expression": "$wf(rainc, 3)$%",
+            "text_size": 21.0,
+            "text_family": "kfile://org.kustom.provider/fonts/Inter-SemiBold.otf",
+            "paint_color": "#FF75B9D5",
+            "position_anchor": "TOP",
+            "position_padding_top": 192.0
+          }
+        ],
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 424.0,
+        "position_padding_top": 508.0
+      },
+      {
+        "internal_type": "ShapeModule",
+        "internal_title": "Weather divider 4",
+        "shape_type": "RECT",
+        "shape_width": 2.0,
+        "shape_height": 214.0,
+        "paint_color": "#FFD9D2C3",
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 552.0,
+        "position_padding_top": 508.0
+      },
+      {
+        "internal_type": "OverlapLayerModule",
+        "internal_title": "Weather day 4",
+        "viewgroup_items": [
+          {
+            "internal_type": "ShapeModule",
+            "internal_title": "Weather day 4 area",
+            "shape_type": "RECT",
+            "shape_width": 128.0,
+            "shape_height": 214.0,
+            "paint_color": "#00000000",
+            "position_anchor": "TOPLEFT",
+            "position_padding_left": 0.0,
+            "position_padding_top": 0.0
+          },
+          {
+            "internal_type": "TextModule",
+            "internal_title": "Day 4",
+            "text_expression": "$tc(up, df(EEE, a4d))$",
+            "text_size": 23.0,
+            "text_family": "kfile://org.kustom.provider/fonts/Inter-Bold.otf",
+            "paint_color": "#FF252525",
+            "position_anchor": "TOP",
+            "position_padding_top": 0.0
+          },
+          {
+            "internal_type": "TextModule",
+            "internal_title": "Date 4",
+            "text_expression": "$df(\"d MMM\", a4d)$",
+            "text_size": 20.0,
+            "text_family": "kfile://org.kustom.provider/fonts/Inter-Regular.otf",
+            "paint_color": "#FF8A8478",
+            "position_anchor": "TOP",
+            "position_padding_top": 30.0
+          },
+          {
+            "internal_type": "ShapeModule",
+            "internal_title": "Icon sun 4",
+            "shape_type": "PATH",
+            "shape_width": 52.0,
+            "shape_height": 52.0,
+            "paint_color": "#FFE88A42",
+            "shape_path": "M 0,0",
+            "internal_toggles": {
+              "shape_path": 10
+            },
+            "internal_formulas": {
+              "shape_path": "$if(wf(icon, 4)=\"CLEAR\", \"M 32,50 A 18,18 0 1,1 68,50 A 18,18 0 1,1 32,50 Z M 50,6 L 50,18 M 50,82 L 50,94 M 6,50 L 18,50 M 82,50 L 94,50 M 19,19 L 27,27 M 73,73 L 81,81 M 19,81 L 27,73 M 73,27 L 81,19\", wf(icon, 4)=\"PCLOUDY\", \"M 22,34 A 12,12 0 1,1 46,34 A 12,12 0 1,1 22,34 Z M 34,8 L 34,15 M 8,34 L 15,34 M 16,16 L 21,21 M 52,16 L 47,21\", \"M 0,0\")$"
+            },
+            "paint_style": "STROKE",
+            "paint_stroke": 4.0,
+            "position_anchor": "TOPLEFT",
+            "position_padding_left": 38.0,
+            "position_padding_top": 62.0
+          },
+          {
+            "internal_type": "ShapeModule",
+            "internal_title": "Icon cloud fill 4",
+            "shape_type": "PATH",
+            "shape_width": 52.0,
+            "shape_height": 52.0,
+            "paint_color": "#FFF5F1E8",
+            "shape_path": "M 0,0",
+            "internal_toggles": {
+              "shape_path": 10
+            },
+            "internal_formulas": {
+              "shape_path": "$if(wf(icon, 4)=\"CLEAR\", \"M 0,0\", wf(icon, 4)=\"PCLOUDY\", \"M 38,86 L 82,86 A 12,12 0 0,0 84,62 A 19,19 0 0,0 47,60 A 13,13 0 0,0 38,86 Z\", wf(icon, 4)=\"TSTORM\" | wf(icon, 4)=\"TSHOWER\" | wf(icon, 4)=\"SHOWER\" | wf(icon, 4)=\"RAIN\" | wf(icon, 4)=\"TORNADO\" | wf(icon, 4)=\"SLEET\" | wf(icon, 4)=\"LSNOW\" | wf(icon, 4)=\"SNOW\" | wf(icon, 4)=\"HAIL\", \"M 26,62 L 74,62 A 14,14 0 0,0 77,34 A 22,22 0 0,0 35,32 A 15,15 0 0,0 26,62 Z\", \"M 26,76 L 74,76 A 14,14 0 0,0 77,48 A 22,22 0 0,0 35,46 A 15,15 0 0,0 26,76 Z\")$"
+            },
+            "position_anchor": "TOPLEFT",
+            "position_padding_left": 38.0,
+            "position_padding_top": 62.0
+          },
+          {
+            "internal_type": "ShapeModule",
+            "internal_title": "Icon cloud 4",
+            "shape_type": "PATH",
+            "shape_width": 52.0,
+            "shape_height": 52.0,
+            "paint_color": "#FF252525",
+            "shape_path": "M 0,0",
+            "internal_toggles": {
+              "shape_path": 10
+            },
+            "internal_formulas": {
+              "shape_path": "$if(wf(icon, 4)=\"CLEAR\", \"M 0,0\", wf(icon, 4)=\"PCLOUDY\", \"M 38,86 L 82,86 A 12,12 0 0,0 84,62 A 19,19 0 0,0 47,60 A 13,13 0 0,0 38,86 Z\", wf(icon, 4)=\"TSTORM\" | wf(icon, 4)=\"TSHOWER\" | wf(icon, 4)=\"SHOWER\" | wf(icon, 4)=\"RAIN\" | wf(icon, 4)=\"TORNADO\" | wf(icon, 4)=\"SLEET\" | wf(icon, 4)=\"LSNOW\" | wf(icon, 4)=\"SNOW\" | wf(icon, 4)=\"HAIL\", \"M 26,62 L 74,62 A 14,14 0 0,0 77,34 A 22,22 0 0,0 35,32 A 15,15 0 0,0 26,62 Z\", \"M 26,76 L 74,76 A 14,14 0 0,0 77,48 A 22,22 0 0,0 35,46 A 15,15 0 0,0 26,76 Z\")$"
+            },
+            "paint_style": "STROKE",
+            "paint_stroke": 4.0,
+            "position_anchor": "TOPLEFT",
+            "position_padding_left": 38.0,
+            "position_padding_top": 62.0
+          },
+          {
+            "internal_type": "ShapeModule",
+            "internal_title": "Icon drops 4",
+            "shape_type": "PATH",
+            "shape_width": 52.0,
+            "shape_height": 52.0,
+            "paint_color": "#FF75B9D5",
+            "shape_path": "M 0,0",
+            "internal_toggles": {
+              "shape_path": 10
+            },
+            "internal_formulas": {
+              "shape_path": "$if(wf(icon, 4)=\"TSTORM\" | wf(icon, 4)=\"TSHOWER\" | wf(icon, 4)=\"SHOWER\" | wf(icon, 4)=\"RAIN\" | wf(icon, 4)=\"TORNADO\", \"M 37,74 L 33,90 M 53,74 L 49,90 M 69,74 L 65,90\", wf(icon, 4)=\"SLEET\" | wf(icon, 4)=\"LSNOW\" | wf(icon, 4)=\"SNOW\" | wf(icon, 4)=\"HAIL\", \"M 34,76 L 34,80 M 50,82 L 50,86 M 66,76 L 66,80 M 42,90 L 42,94 M 58,90 L 58,94\", \"M 0,0\")$"
+            },
+            "paint_style": "STROKE",
+            "paint_stroke": 4.0,
+            "position_anchor": "TOPLEFT",
+            "position_padding_left": 38.0,
+            "position_padding_top": 62.0
+          },
+          {
+            "internal_type": "TextModule",
+            "internal_title": "High 4",
+            "text_expression": "$wf(max, 4)$°",
+            "text_size": 31.0,
+            "text_family": "kfile://org.kustom.provider/fonts/Inter-Bold.otf",
+            "paint_color": "#FF252525",
+            "position_anchor": "TOP",
+            "position_padding_top": 122.0
+          },
+          {
+            "internal_type": "TextModule",
+            "internal_title": "Low 4",
+            "text_expression": "$wf(min, 4)$°",
+            "text_size": 24.0,
+            "text_family": "kfile://org.kustom.provider/fonts/Inter-Regular.otf",
+            "paint_color": "#FF8A8478",
+            "position_anchor": "TOP",
+            "position_padding_top": 160.0
+          },
+          {
+            "internal_type": "TextModule",
+            "internal_title": "Rain 4",
+            "text_expression": "$wf(rainc, 4)$%",
+            "text_size": 21.0,
+            "text_family": "kfile://org.kustom.provider/fonts/Inter-SemiBold.otf",
+            "paint_color": "#FF75B9D5",
+            "position_anchor": "TOP",
+            "position_padding_top": 192.0
+          }
+        ],
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 552.0,
+        "position_padding_top": 508.0
+      },
+      {
+        "internal_type": "TextModule",
+        "internal_title": "Label",
+        "text_expression": "WATCHLIST",
+        "text_size": 19.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-SemiBold.otf",
+        "paint_color": "#FF8A8478",
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 40.0,
+        "position_padding_top": 748.0
+      },
+      {
+        "internal_type": "TextModule",
+        "internal_title": "H symbol",
+        "text_expression": "SYMBOL",
+        "text_size": 18.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-SemiBold.otf",
+        "paint_color": "#FF8A8478",
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 40.0,
+        "position_padding_top": 784.0
+      },
+      {
+        "internal_type": "TextModule",
+        "internal_title": "H price",
+        "text_expression": "PRICE",
+        "text_size": 18.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-SemiBold.otf",
+        "paint_color": "#FF8A8478",
+        "position_anchor": "TOPRIGHT",
+        "position_padding_right": 340.0,
+        "position_padding_top": 784.0
+      },
+      {
+        "internal_type": "TextModule",
+        "internal_title": "H chg",
+        "text_expression": "CHG $",
+        "text_size": 18.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-SemiBold.otf",
+        "paint_color": "#FF8A8478",
+        "position_anchor": "TOPRIGHT",
+        "position_padding_right": 180.0,
+        "position_padding_top": 784.0
+      },
+      {
+        "internal_type": "TextModule",
+        "internal_title": "H pct",
+        "text_expression": "CHG %",
+        "text_size": 18.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-SemiBold.otf",
+        "paint_color": "#FF8A8478",
+        "position_anchor": "TOPRIGHT",
+        "position_padding_right": 40.0,
+        "position_padding_top": 784.0
+      },
+      {
+        "internal_type": "ShapeModule",
+        "internal_title": "Row rule 0",
+        "shape_type": "RECT",
+        "shape_width": 640.0,
+        "shape_height": 2.0,
+        "paint_color": "#FFD9D2C3",
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 40.0,
+        "position_padding_top": 820.0
+      },
+      {
+        "internal_type": "ShapeModule",
+        "internal_title": "Dot 0",
+        "shape_type": "CIRCLE",
+        "shape_width": 16.0,
+        "shape_height": 16.0,
+        "paint_color": "#FFE88A42",
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 40.0,
+        "position_padding_top": 835.0
+      },
+      {
+        "internal_type": "TextModule",
+        "internal_title": "Symbol 0",
+        "text_expression": "$if(br(tasker, nx_q)=\"\", \"IWM\", tc(split, tc(split, br(tasker, nx_q), \"|\", 0), \";\", 0))$",
+        "text_size": 27.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-Bold.otf",
+        "paint_color": "#FF252525",
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 68.0,
+        "position_padding_top": 827.0
+      },
+      {
+        "internal_type": "TextModule",
+        "internal_title": "Price 0",
+        "text_expression": "$if(br(tasker, nx_q)=\"\", \"--.--\", tc(split, tc(split, br(tasker, nx_q), \"|\", 0), \";\", 1))$",
+        "text_size": 27.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-Regular.otf",
+        "paint_color": "#FF252525",
+        "position_anchor": "TOPRIGHT",
+        "position_padding_right": 340.0,
+        "position_padding_top": 827.0
+      },
+      {
+        "internal_type": "TextModule",
+        "internal_title": "Change 0",
+        "text_expression": "$if(br(tasker, nx_q)=\"\", \"--.--\", tc(split, tc(split, br(tasker, nx_q), \"|\", 0), \";\", 4)<0, \"▼ \" + tc(split, tc(split, br(tasker, nx_q), \"|\", 0), \";\", 2), \"▲ \" + tc(split, tc(split, br(tasker, nx_q), \"|\", 0), \";\", 2))$",
+        "text_size": 27.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-SemiBold.otf",
+        "paint_color": "#FF8A8478",
+        "position_anchor": "TOPRIGHT",
+        "position_padding_right": 180.0,
+        "position_padding_top": 827.0,
+        "internal_toggles": {
+          "paint_color": 10
+        },
+        "internal_formulas": {
+          "paint_color": "$if(br(tasker, nx_q)=\"\", \"#FF8A8478\", tc(split, tc(split, br(tasker, nx_q), \"|\", 0), \";\", 4)>0, \"#FF39845B\", tc(split, tc(split, br(tasker, nx_q), \"|\", 0), \";\", 4)<0, \"#FFDC665D\", \"#FF8A8478\")$"
+        }
+      },
+      {
+        "internal_type": "TextModule",
+        "internal_title": "Percent 0",
+        "text_expression": "$if(br(tasker, nx_q)=\"\", \"--.--%\", tc(split, tc(split, br(tasker, nx_q), \"|\", 0), \";\", 3))$",
+        "text_size": 27.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-SemiBold.otf",
+        "paint_color": "#FF8A8478",
+        "position_anchor": "TOPRIGHT",
+        "position_padding_right": 40.0,
+        "position_padding_top": 827.0,
+        "internal_toggles": {
+          "paint_color": 10
+        },
+        "internal_formulas": {
+          "paint_color": "$if(br(tasker, nx_q)=\"\", \"#FF8A8478\", tc(split, tc(split, br(tasker, nx_q), \"|\", 0), \";\", 4)>0, \"#FF39845B\", tc(split, tc(split, br(tasker, nx_q), \"|\", 0), \";\", 4)<0, \"#FFDC665D\", \"#FF8A8478\")$"
+        }
+      },
+      {
+        "internal_type": "ShapeModule",
+        "internal_title": "Row rule 1",
+        "shape_type": "RECT",
+        "shape_width": 640.0,
+        "shape_height": 2.0,
+        "paint_color": "#FFD9D2C3",
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 40.0,
+        "position_padding_top": 864.0
+      },
+      {
+        "internal_type": "ShapeModule",
+        "internal_title": "Dot 1",
+        "shape_type": "CIRCLE",
+        "shape_width": 16.0,
+        "shape_height": 16.0,
+        "paint_color": "#FF252525",
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 40.0,
+        "position_padding_top": 879.0
+      },
+      {
+        "internal_type": "TextModule",
+        "internal_title": "Symbol 1",
+        "text_expression": "$if(br(tasker, nx_q)=\"\", \"SPY\", tc(split, tc(split, br(tasker, nx_q), \"|\", 1), \";\", 0))$",
+        "text_size": 27.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-Bold.otf",
+        "paint_color": "#FF252525",
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 68.0,
+        "position_padding_top": 871.0
+      },
+      {
+        "internal_type": "TextModule",
+        "internal_title": "Price 1",
+        "text_expression": "$if(br(tasker, nx_q)=\"\", \"--.--\", tc(split, tc(split, br(tasker, nx_q), \"|\", 1), \";\", 1))$",
+        "text_size": 27.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-Regular.otf",
+        "paint_color": "#FF252525",
+        "position_anchor": "TOPRIGHT",
+        "position_padding_right": 340.0,
+        "position_padding_top": 871.0
+      },
+      {
+        "internal_type": "TextModule",
+        "internal_title": "Change 1",
+        "text_expression": "$if(br(tasker, nx_q)=\"\", \"--.--\", tc(split, tc(split, br(tasker, nx_q), \"|\", 1), \";\", 4)<0, \"▼ \" + tc(split, tc(split, br(tasker, nx_q), \"|\", 1), \";\", 2), \"▲ \" + tc(split, tc(split, br(tasker, nx_q), \"|\", 1), \";\", 2))$",
+        "text_size": 27.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-SemiBold.otf",
+        "paint_color": "#FF8A8478",
+        "position_anchor": "TOPRIGHT",
+        "position_padding_right": 180.0,
+        "position_padding_top": 871.0,
+        "internal_toggles": {
+          "paint_color": 10
+        },
+        "internal_formulas": {
+          "paint_color": "$if(br(tasker, nx_q)=\"\", \"#FF8A8478\", tc(split, tc(split, br(tasker, nx_q), \"|\", 1), \";\", 4)>0, \"#FF39845B\", tc(split, tc(split, br(tasker, nx_q), \"|\", 1), \";\", 4)<0, \"#FFDC665D\", \"#FF8A8478\")$"
+        }
+      },
+      {
+        "internal_type": "TextModule",
+        "internal_title": "Percent 1",
+        "text_expression": "$if(br(tasker, nx_q)=\"\", \"--.--%\", tc(split, tc(split, br(tasker, nx_q), \"|\", 1), \";\", 3))$",
+        "text_size": 27.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-SemiBold.otf",
+        "paint_color": "#FF8A8478",
+        "position_anchor": "TOPRIGHT",
+        "position_padding_right": 40.0,
+        "position_padding_top": 871.0,
+        "internal_toggles": {
+          "paint_color": 10
+        },
+        "internal_formulas": {
+          "paint_color": "$if(br(tasker, nx_q)=\"\", \"#FF8A8478\", tc(split, tc(split, br(tasker, nx_q), \"|\", 1), \";\", 4)>0, \"#FF39845B\", tc(split, tc(split, br(tasker, nx_q), \"|\", 1), \";\", 4)<0, \"#FFDC665D\", \"#FF8A8478\")$"
+        }
+      },
+      {
+        "internal_type": "ShapeModule",
+        "internal_title": "Row rule 2",
+        "shape_type": "RECT",
+        "shape_width": 640.0,
+        "shape_height": 2.0,
+        "paint_color": "#FFD9D2C3",
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 40.0,
+        "position_padding_top": 908.0
+      },
+      {
+        "internal_type": "ShapeModule",
+        "internal_title": "Dot 2",
+        "shape_type": "CIRCLE",
+        "shape_width": 16.0,
+        "shape_height": 16.0,
+        "paint_color": "#FF75B9D5",
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 40.0,
+        "position_padding_top": 923.0
+      },
+      {
+        "internal_type": "TextModule",
+        "internal_title": "Symbol 2",
+        "text_expression": "$if(br(tasker, nx_q)=\"\", \"QQQ\", tc(split, tc(split, br(tasker, nx_q), \"|\", 2), \";\", 0))$",
+        "text_size": 27.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-Bold.otf",
+        "paint_color": "#FF252525",
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 68.0,
+        "position_padding_top": 915.0
+      },
+      {
+        "internal_type": "TextModule",
+        "internal_title": "Price 2",
+        "text_expression": "$if(br(tasker, nx_q)=\"\", \"--.--\", tc(split, tc(split, br(tasker, nx_q), \"|\", 2), \";\", 1))$",
+        "text_size": 27.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-Regular.otf",
+        "paint_color": "#FF252525",
+        "position_anchor": "TOPRIGHT",
+        "position_padding_right": 340.0,
+        "position_padding_top": 915.0
+      },
+      {
+        "internal_type": "TextModule",
+        "internal_title": "Change 2",
+        "text_expression": "$if(br(tasker, nx_q)=\"\", \"--.--\", tc(split, tc(split, br(tasker, nx_q), \"|\", 2), \";\", 4)<0, \"▼ \" + tc(split, tc(split, br(tasker, nx_q), \"|\", 2), \";\", 2), \"▲ \" + tc(split, tc(split, br(tasker, nx_q), \"|\", 2), \";\", 2))$",
+        "text_size": 27.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-SemiBold.otf",
+        "paint_color": "#FF8A8478",
+        "position_anchor": "TOPRIGHT",
+        "position_padding_right": 180.0,
+        "position_padding_top": 915.0,
+        "internal_toggles": {
+          "paint_color": 10
+        },
+        "internal_formulas": {
+          "paint_color": "$if(br(tasker, nx_q)=\"\", \"#FF8A8478\", tc(split, tc(split, br(tasker, nx_q), \"|\", 2), \";\", 4)>0, \"#FF39845B\", tc(split, tc(split, br(tasker, nx_q), \"|\", 2), \";\", 4)<0, \"#FFDC665D\", \"#FF8A8478\")$"
+        }
+      },
+      {
+        "internal_type": "TextModule",
+        "internal_title": "Percent 2",
+        "text_expression": "$if(br(tasker, nx_q)=\"\", \"--.--%\", tc(split, tc(split, br(tasker, nx_q), \"|\", 2), \";\", 3))$",
+        "text_size": 27.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-SemiBold.otf",
+        "paint_color": "#FF8A8478",
+        "position_anchor": "TOPRIGHT",
+        "position_padding_right": 40.0,
+        "position_padding_top": 915.0,
+        "internal_toggles": {
+          "paint_color": 10
+        },
+        "internal_formulas": {
+          "paint_color": "$if(br(tasker, nx_q)=\"\", \"#FF8A8478\", tc(split, tc(split, br(tasker, nx_q), \"|\", 2), \";\", 4)>0, \"#FF39845B\", tc(split, tc(split, br(tasker, nx_q), \"|\", 2), \";\", 4)<0, \"#FFDC665D\", \"#FF8A8478\")$"
+        }
+      },
+      {
+        "internal_type": "ShapeModule",
+        "internal_title": "Row rule 3",
+        "shape_type": "RECT",
+        "shape_width": 640.0,
+        "shape_height": 2.0,
+        "paint_color": "#FFD9D2C3",
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 40.0,
+        "position_padding_top": 952.0
+      },
+      {
+        "internal_type": "ShapeModule",
+        "internal_title": "Dot 3",
+        "shape_type": "CIRCLE",
+        "shape_width": 16.0,
+        "shape_height": 16.0,
+        "paint_color": "#FF8C6BB1",
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 40.0,
+        "position_padding_top": 967.0
+      },
+      {
+        "internal_type": "TextModule",
+        "internal_title": "Symbol 3",
+        "text_expression": "$if(br(tasker, nx_q)=\"\", \"SOXL\", tc(split, tc(split, br(tasker, nx_q), \"|\", 3), \";\", 0))$",
+        "text_size": 27.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-Bold.otf",
+        "paint_color": "#FF252525",
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 68.0,
+        "position_padding_top": 959.0
+      },
+      {
+        "internal_type": "TextModule",
+        "internal_title": "Price 3",
+        "text_expression": "$if(br(tasker, nx_q)=\"\", \"--.--\", tc(split, tc(split, br(tasker, nx_q), \"|\", 3), \";\", 1))$",
+        "text_size": 27.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-Regular.otf",
+        "paint_color": "#FF252525",
+        "position_anchor": "TOPRIGHT",
+        "position_padding_right": 340.0,
+        "position_padding_top": 959.0
+      },
+      {
+        "internal_type": "TextModule",
+        "internal_title": "Change 3",
+        "text_expression": "$if(br(tasker, nx_q)=\"\", \"--.--\", tc(split, tc(split, br(tasker, nx_q), \"|\", 3), \";\", 4)<0, \"▼ \" + tc(split, tc(split, br(tasker, nx_q), \"|\", 3), \";\", 2), \"▲ \" + tc(split, tc(split, br(tasker, nx_q), \"|\", 3), \";\", 2))$",
+        "text_size": 27.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-SemiBold.otf",
+        "paint_color": "#FF8A8478",
+        "position_anchor": "TOPRIGHT",
+        "position_padding_right": 180.0,
+        "position_padding_top": 959.0,
+        "internal_toggles": {
+          "paint_color": 10
+        },
+        "internal_formulas": {
+          "paint_color": "$if(br(tasker, nx_q)=\"\", \"#FF8A8478\", tc(split, tc(split, br(tasker, nx_q), \"|\", 3), \";\", 4)>0, \"#FF39845B\", tc(split, tc(split, br(tasker, nx_q), \"|\", 3), \";\", 4)<0, \"#FFDC665D\", \"#FF8A8478\")$"
+        }
+      },
+      {
+        "internal_type": "TextModule",
+        "internal_title": "Percent 3",
+        "text_expression": "$if(br(tasker, nx_q)=\"\", \"--.--%\", tc(split, tc(split, br(tasker, nx_q), \"|\", 3), \";\", 3))$",
+        "text_size": 27.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-SemiBold.otf",
+        "paint_color": "#FF8A8478",
+        "position_anchor": "TOPRIGHT",
+        "position_padding_right": 40.0,
+        "position_padding_top": 959.0,
+        "internal_toggles": {
+          "paint_color": 10
+        },
+        "internal_formulas": {
+          "paint_color": "$if(br(tasker, nx_q)=\"\", \"#FF8A8478\", tc(split, tc(split, br(tasker, nx_q), \"|\", 3), \";\", 4)>0, \"#FF39845B\", tc(split, tc(split, br(tasker, nx_q), \"|\", 3), \";\", 4)<0, \"#FFDC665D\", \"#FF8A8478\")$"
+        }
+      },
+      {
+        "internal_type": "ShapeModule",
+        "internal_title": "Row rule 4",
+        "shape_type": "RECT",
+        "shape_width": 640.0,
+        "shape_height": 2.0,
+        "paint_color": "#FFD9D2C3",
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 40.0,
+        "position_padding_top": 996.0
+      },
+      {
+        "internal_type": "ShapeModule",
+        "internal_title": "Dot 4",
+        "shape_type": "CIRCLE",
+        "shape_width": 16.0,
+        "shape_height": 16.0,
+        "paint_color": "#FFA89060",
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 40.0,
+        "position_padding_top": 1011.0
+      },
+      {
+        "internal_type": "TextModule",
+        "internal_title": "Symbol 4",
+        "text_expression": "$if(br(tasker, nx_q)=\"\", \"SPCX\", tc(split, tc(split, br(tasker, nx_q), \"|\", 4), \";\", 0))$",
+        "text_size": 27.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-Bold.otf",
+        "paint_color": "#FF252525",
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 68.0,
+        "position_padding_top": 1003.0
+      },
+      {
+        "internal_type": "TextModule",
+        "internal_title": "Price 4",
+        "text_expression": "$if(br(tasker, nx_q)=\"\", \"--.--\", tc(split, tc(split, br(tasker, nx_q), \"|\", 4), \";\", 1))$",
+        "text_size": 27.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-Regular.otf",
+        "paint_color": "#FF252525",
+        "position_anchor": "TOPRIGHT",
+        "position_padding_right": 340.0,
+        "position_padding_top": 1003.0
+      },
+      {
+        "internal_type": "TextModule",
+        "internal_title": "Change 4",
+        "text_expression": "$if(br(tasker, nx_q)=\"\", \"--.--\", tc(split, tc(split, br(tasker, nx_q), \"|\", 4), \";\", 4)<0, \"▼ \" + tc(split, tc(split, br(tasker, nx_q), \"|\", 4), \";\", 2), \"▲ \" + tc(split, tc(split, br(tasker, nx_q), \"|\", 4), \";\", 2))$",
+        "text_size": 27.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-SemiBold.otf",
+        "paint_color": "#FF8A8478",
+        "position_anchor": "TOPRIGHT",
+        "position_padding_right": 180.0,
+        "position_padding_top": 1003.0,
+        "internal_toggles": {
+          "paint_color": 10
+        },
+        "internal_formulas": {
+          "paint_color": "$if(br(tasker, nx_q)=\"\", \"#FF8A8478\", tc(split, tc(split, br(tasker, nx_q), \"|\", 4), \";\", 4)>0, \"#FF39845B\", tc(split, tc(split, br(tasker, nx_q), \"|\", 4), \";\", 4)<0, \"#FFDC665D\", \"#FF8A8478\")$"
+        }
+      },
+      {
+        "internal_type": "TextModule",
+        "internal_title": "Percent 4",
+        "text_expression": "$if(br(tasker, nx_q)=\"\", \"--.--%\", tc(split, tc(split, br(tasker, nx_q), \"|\", 4), \";\", 3))$",
+        "text_size": 27.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-SemiBold.otf",
+        "paint_color": "#FF8A8478",
+        "position_anchor": "TOPRIGHT",
+        "position_padding_right": 40.0,
+        "position_padding_top": 1003.0,
+        "internal_toggles": {
+          "paint_color": 10
+        },
+        "internal_formulas": {
+          "paint_color": "$if(br(tasker, nx_q)=\"\", \"#FF8A8478\", tc(split, tc(split, br(tasker, nx_q), \"|\", 4), \";\", 4)>0, \"#FF39845B\", tc(split, tc(split, br(tasker, nx_q), \"|\", 4), \";\", 4)<0, \"#FFDC665D\", \"#FF8A8478\")$"
+        }
+      },
+      {
+        "internal_type": "TextModule",
+        "internal_title": "Label",
+        "text_expression": "5-DAY PERFORMANCE",
+        "text_size": 19.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-SemiBold.otf",
+        "paint_color": "#FF8A8478",
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 40.0,
+        "position_padding_top": 1086.0
+      },
+      {
+        "internal_type": "TextModule",
+        "internal_title": "Label unit",
+        "text_expression": "% FROM START",
+        "text_size": 19.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-SemiBold.otf",
+        "paint_color": "#FF8A8478",
+        "position_anchor": "TOPRIGHT",
+        "position_padding_right": 40.0,
+        "position_padding_top": 1086.0
+      },
+      {
+        "internal_type": "ShapeModule",
+        "internal_title": "Grid top",
+        "shape_type": "RECT",
+        "shape_width": 588.0,
+        "shape_height": 2.0,
+        "paint_color": "#FFD9D2C3",
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 92.0,
+        "position_padding_top": 1126.0
+      },
+      {
+        "internal_type": "ShapeModule",
+        "internal_title": "Grid bottom",
+        "shape_type": "RECT",
+        "shape_width": 588.0,
+        "shape_height": 2.0,
+        "paint_color": "#FFD9D2C3",
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 92.0,
+        "position_padding_top": 1310.0
+      },
+      {
+        "internal_type": "ShapeModule",
+        "internal_title": "Zero line",
+        "shape_type": "PATH",
+        "shape_width": 588.0,
+        "shape_height": 184.0,
+        "paint_color": "#FFBDB5A5",
+        "shape_path": "M 0,0",
+        "internal_toggles": {
+          "shape_path": 10
+        },
+        "internal_formulas": {
+          "shape_path": "$tc(split, br(tasker, nx_chart), \"|\", 5)$"
+        },
+        "paint_style": "STROKE",
+        "paint_stroke": 2.0,
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 92.0,
+        "position_padding_top": 1126.0
+      },
+      {
+        "internal_type": "TextModule",
+        "internal_title": "Y max",
+        "text_expression": "$if(br(tasker, nx_meta)=\"\", \"\", tc(split, br(tasker, nx_meta), \"|\", 3))$",
+        "text_size": 17.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-Regular.otf",
+        "paint_color": "#FF8A8478",
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 40.0,
+        "position_padding_top": 1117.0
+      },
+      {
+        "internal_type": "TextModule",
+        "internal_title": "Y min",
+        "text_expression": "$if(br(tasker, nx_meta)=\"\", \"\", tc(split, br(tasker, nx_meta), \"|\", 4))$",
+        "text_size": 17.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-Regular.otf",
+        "paint_color": "#FF8A8478",
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 40.0,
+        "position_padding_top": 1301.0
+      },
+      {
+        "internal_type": "TextModule",
+        "internal_title": "Y zero",
+        "text_expression": "$if(br(tasker, nx_meta)=\"\", \"\", \"0%\")$",
+        "text_size": 17.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-Regular.otf",
+        "paint_color": "#FF8A8478",
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 40.0,
+        "position_padding_top": 1209.0,
+        "internal_toggles": {
+          "position_padding_top": 10
+        },
+        "internal_formulas": {
+          "position_padding_top": "$if(br(tasker, nx_meta)=\"\", 1209.0, 1117 + 184 * tc(split, br(tasker, nx_meta), \"|\", 5) / 100)$"
+        }
+      },
+      {
+        "internal_type": "ShapeModule",
+        "internal_title": "Line IWM",
+        "shape_type": "PATH",
+        "shape_width": 588.0,
+        "shape_height": 184.0,
+        "paint_color": "#FFE88A42",
+        "shape_path": "M 0,0",
+        "internal_toggles": {
+          "shape_path": 10
+        },
+        "internal_formulas": {
+          "shape_path": "$tc(split, br(tasker, nx_chart), \"|\", 0)$"
+        },
+        "paint_style": "STROKE",
+        "paint_stroke": 4.0,
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 92.0,
+        "position_padding_top": 1126.0
+      },
+      {
+        "internal_type": "ShapeModule",
+        "internal_title": "Line SPY",
+        "shape_type": "PATH",
+        "shape_width": 588.0,
+        "shape_height": 184.0,
+        "paint_color": "#FF252525",
+        "shape_path": "M 0,0",
+        "internal_toggles": {
+          "shape_path": 10
+        },
+        "internal_formulas": {
+          "shape_path": "$tc(split, br(tasker, nx_chart), \"|\", 1)$"
+        },
+        "paint_style": "STROKE",
+        "paint_stroke": 3.2,
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 92.0,
+        "position_padding_top": 1126.0
+      },
+      {
+        "internal_type": "ShapeModule",
+        "internal_title": "Line QQQ",
+        "shape_type": "PATH",
+        "shape_width": 588.0,
+        "shape_height": 184.0,
+        "paint_color": "#FF75B9D5",
+        "shape_path": "M 0,0",
+        "internal_toggles": {
+          "shape_path": 10
+        },
+        "internal_formulas": {
+          "shape_path": "$tc(split, br(tasker, nx_chart), \"|\", 2)$"
+        },
+        "paint_style": "STROKE",
+        "paint_stroke": 4.0,
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 92.0,
+        "position_padding_top": 1126.0
+      },
+      {
+        "internal_type": "ShapeModule",
+        "internal_title": "Line SOXL",
+        "shape_type": "PATH",
+        "shape_width": 588.0,
+        "shape_height": 184.0,
+        "paint_color": "#FF8C6BB1",
+        "shape_path": "M 0,0",
+        "internal_toggles": {
+          "shape_path": 10
+        },
+        "internal_formulas": {
+          "shape_path": "$tc(split, br(tasker, nx_chart), \"|\", 3)$"
+        },
+        "paint_style": "STROKE",
+        "paint_stroke": 4.0,
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 92.0,
+        "position_padding_top": 1126.0
+      },
+      {
+        "internal_type": "ShapeModule",
+        "internal_title": "Line SPCX",
+        "shape_type": "PATH",
+        "shape_width": 588.0,
+        "shape_height": 184.0,
+        "paint_color": "#FFA89060",
+        "shape_path": "M 0,0",
+        "internal_toggles": {
+          "shape_path": 10
+        },
+        "internal_formulas": {
+          "shape_path": "$tc(split, br(tasker, nx_chart), \"|\", 4)$"
+        },
+        "paint_style": "STROKE",
+        "paint_stroke": 4.0,
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 92.0,
+        "position_padding_top": 1126.0
+      },
+      {
+        "internal_type": "OverlapLayerModule",
+        "internal_title": "Chart day 0",
+        "viewgroup_items": [
+          {
+            "internal_type": "ShapeModule",
+            "internal_title": "Chart day 0 area",
+            "shape_type": "RECT",
+            "shape_width": 117.6,
+            "shape_height": 24.0,
+            "paint_color": "#00000000",
+            "position_anchor": "TOPLEFT",
+            "position_padding_left": 0.0,
+            "position_padding_top": 0.0
+          },
+          {
+            "internal_type": "TextModule",
+            "internal_title": "Day label 0",
+            "text_expression": "$if(br(tasker, nx_meta)=\"\", \"\", tc(split, br(tasker, nx_meta), \"|\", 6))$",
+            "text_size": 17.0,
+            "text_family": "kfile://org.kustom.provider/fonts/Inter-Regular.otf",
+            "paint_color": "#FF8A8478",
+            "position_anchor": "TOP",
+            "position_padding_top": 0.0
+          }
+        ],
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 92.0,
+        "position_padding_top": 1322.0
+      },
+      {
+        "internal_type": "OverlapLayerModule",
+        "internal_title": "Chart day 1",
+        "viewgroup_items": [
+          {
+            "internal_type": "ShapeModule",
+            "internal_title": "Chart day 1 area",
+            "shape_type": "RECT",
+            "shape_width": 117.6,
+            "shape_height": 24.0,
+            "paint_color": "#00000000",
+            "position_anchor": "TOPLEFT",
+            "position_padding_left": 0.0,
+            "position_padding_top": 0.0
+          },
+          {
+            "internal_type": "TextModule",
+            "internal_title": "Day label 1",
+            "text_expression": "$if(br(tasker, nx_meta)=\"\", \"\", tc(split, br(tasker, nx_meta), \"|\", 7))$",
+            "text_size": 17.0,
+            "text_family": "kfile://org.kustom.provider/fonts/Inter-Regular.otf",
+            "paint_color": "#FF8A8478",
+            "position_anchor": "TOP",
+            "position_padding_top": 0.0
+          }
+        ],
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 209.6,
+        "position_padding_top": 1322.0
+      },
+      {
+        "internal_type": "OverlapLayerModule",
+        "internal_title": "Chart day 2",
+        "viewgroup_items": [
+          {
+            "internal_type": "ShapeModule",
+            "internal_title": "Chart day 2 area",
+            "shape_type": "RECT",
+            "shape_width": 117.6,
+            "shape_height": 24.0,
+            "paint_color": "#00000000",
+            "position_anchor": "TOPLEFT",
+            "position_padding_left": 0.0,
+            "position_padding_top": 0.0
+          },
+          {
+            "internal_type": "TextModule",
+            "internal_title": "Day label 2",
+            "text_expression": "$if(br(tasker, nx_meta)=\"\", \"\", tc(split, br(tasker, nx_meta), \"|\", 8))$",
+            "text_size": 17.0,
+            "text_family": "kfile://org.kustom.provider/fonts/Inter-Regular.otf",
+            "paint_color": "#FF8A8478",
+            "position_anchor": "TOP",
+            "position_padding_top": 0.0
+          }
+        ],
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 327.2,
+        "position_padding_top": 1322.0
+      },
+      {
+        "internal_type": "OverlapLayerModule",
+        "internal_title": "Chart day 3",
+        "viewgroup_items": [
+          {
+            "internal_type": "ShapeModule",
+            "internal_title": "Chart day 3 area",
+            "shape_type": "RECT",
+            "shape_width": 117.6,
+            "shape_height": 24.0,
+            "paint_color": "#00000000",
+            "position_anchor": "TOPLEFT",
+            "position_padding_left": 0.0,
+            "position_padding_top": 0.0
+          },
+          {
+            "internal_type": "TextModule",
+            "internal_title": "Day label 3",
+            "text_expression": "$if(br(tasker, nx_meta)=\"\", \"\", tc(split, br(tasker, nx_meta), \"|\", 9))$",
+            "text_size": 17.0,
+            "text_family": "kfile://org.kustom.provider/fonts/Inter-Regular.otf",
+            "paint_color": "#FF8A8478",
+            "position_anchor": "TOP",
+            "position_padding_top": 0.0
+          }
+        ],
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 444.79999999999995,
+        "position_padding_top": 1322.0
+      },
+      {
+        "internal_type": "OverlapLayerModule",
+        "internal_title": "Chart day 4",
+        "viewgroup_items": [
+          {
+            "internal_type": "ShapeModule",
+            "internal_title": "Chart day 4 area",
+            "shape_type": "RECT",
+            "shape_width": 117.6,
+            "shape_height": 24.0,
+            "paint_color": "#00000000",
+            "position_anchor": "TOPLEFT",
+            "position_padding_left": 0.0,
+            "position_padding_top": 0.0
+          },
+          {
+            "internal_type": "TextModule",
+            "internal_title": "Day label 4",
+            "text_expression": "$if(br(tasker, nx_meta)=\"\", \"\", tc(split, br(tasker, nx_meta), \"|\", 10))$",
+            "text_size": 17.0,
+            "text_family": "kfile://org.kustom.provider/fonts/Inter-Regular.otf",
+            "paint_color": "#FF8A8478",
+            "position_anchor": "TOP",
+            "position_padding_top": 0.0
+          }
+        ],
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 562.4,
+        "position_padding_top": 1322.0
+      },
+      {
+        "internal_type": "OverlapLayerModule",
+        "internal_title": "Chart waiting",
+        "viewgroup_items": [
+          {
+            "internal_type": "ShapeModule",
+            "internal_title": "Chart waiting area",
+            "shape_type": "RECT",
+            "shape_width": 588.0,
+            "shape_height": 32.0,
+            "paint_color": "#00000000",
+            "position_anchor": "TOPLEFT",
+            "position_padding_left": 0.0,
+            "position_padding_top": 0.0
+          },
+          {
+            "internal_type": "TextModule",
+            "internal_title": "Waiting",
+            "text_expression": "Waiting for stock data from Tasker",
+            "text_size": 22.0,
+            "text_family": "kfile://org.kustom.provider/fonts/Inter-Medium.otf",
+            "paint_color": "#FF8A8478",
+            "position_anchor": "TOP",
+            "position_padding_top": 0.0
+          }
+        ],
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 92.0,
+        "position_padding_top": 1202.0,
+        "internal_toggles": {
+          "config_visible": 10
+        },
+        "internal_formulas": {
+          "config_visible": "$if(br(tasker, nx_chart)=\"\", ALWAYS, REMOVE)$"
+        }
+      },
+      {
+        "internal_type": "ShapeModule",
+        "internal_title": "Legend swatch 0",
+        "shape_type": "RECT",
+        "shape_width": 24.0,
+        "shape_height": 6.0,
+        "paint_color": "#FFE88A42",
+        "shape_corners": 3.0,
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 40.0,
+        "position_padding_top": 1362.0
+      },
+      {
+        "internal_type": "TextModule",
+        "internal_title": "Legend 0",
+        "text_expression": "IWM",
+        "text_size": 20.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-Bold.otf",
+        "paint_color": "#FF252525",
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 72.0,
+        "position_padding_top": 1350.0
+      },
+      {
+        "internal_type": "ShapeModule",
+        "internal_title": "Legend swatch 1",
+        "shape_type": "RECT",
+        "shape_width": 24.0,
+        "shape_height": 6.0,
+        "paint_color": "#FF252525",
+        "shape_corners": 3.0,
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 168.0,
+        "position_padding_top": 1362.0
+      },
+      {
+        "internal_type": "TextModule",
+        "internal_title": "Legend 1",
+        "text_expression": "SPY",
+        "text_size": 20.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-Bold.otf",
+        "paint_color": "#FF252525",
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 200.0,
+        "position_padding_top": 1350.0
+      },
+      {
+        "internal_type": "ShapeModule",
+        "internal_title": "Legend swatch 2",
+        "shape_type": "RECT",
+        "shape_width": 24.0,
+        "shape_height": 6.0,
+        "paint_color": "#FF75B9D5",
+        "shape_corners": 3.0,
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 296.0,
+        "position_padding_top": 1362.0
+      },
+      {
+        "internal_type": "TextModule",
+        "internal_title": "Legend 2",
+        "text_expression": "QQQ",
+        "text_size": 20.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-Bold.otf",
+        "paint_color": "#FF252525",
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 328.0,
+        "position_padding_top": 1350.0
+      },
+      {
+        "internal_type": "ShapeModule",
+        "internal_title": "Legend swatch 3",
+        "shape_type": "RECT",
+        "shape_width": 24.0,
+        "shape_height": 6.0,
+        "paint_color": "#FF8C6BB1",
+        "shape_corners": 3.0,
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 424.0,
+        "position_padding_top": 1362.0
+      },
+      {
+        "internal_type": "TextModule",
+        "internal_title": "Legend 3",
+        "text_expression": "SOXL",
+        "text_size": 20.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-Bold.otf",
+        "paint_color": "#FF252525",
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 456.0,
+        "position_padding_top": 1350.0
+      },
+      {
+        "internal_type": "ShapeModule",
+        "internal_title": "Legend swatch 4",
+        "shape_type": "RECT",
+        "shape_width": 24.0,
+        "shape_height": 6.0,
+        "paint_color": "#FFA89060",
+        "shape_corners": 3.0,
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 552.0,
+        "position_padding_top": 1362.0
+      },
+      {
+        "internal_type": "TextModule",
+        "internal_title": "Legend 4",
+        "text_expression": "SPCX",
+        "text_size": 20.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-Bold.otf",
+        "paint_color": "#FF252525",
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 584.0,
+        "position_padding_top": 1350.0
+      },
+      {
+        "internal_type": "TextModule",
+        "internal_title": "Updated",
+        "text_expression": "$if(br(tasker, nx_meta)=\"\", \"Updated --:--\", \"Updated \" + tc(split, br(tasker, nx_meta), \"|\", 2))$",
+        "text_size": 19.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-Regular.otf",
+        "paint_color": "#FF8A8478",
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 40.0,
+        "position_padding_top": 1386.0
+      },
+      {
+        "internal_type": "TextModule",
+        "internal_title": "Status",
+        "text_expression": "$if(br(tasker, nx_meta)=\"\", \"Not connected yet\", tc(split, br(tasker, nx_meta), \"|\", 1)=\"ERROR\", \"● Offline · last data\", tc(split, br(tasker, nx_meta), \"|\", 1)=\"OPEN\" & df(S) - tc(split, br(tasker, nx_meta), \"|\", 0) > 1200, \"● Stale\", tc(split, br(tasker, nx_meta), \"|\", 1)=\"OPEN\", \"● Live\", \"Market closed\")$",
+        "text_size": 19.0,
+        "text_family": "kfile://org.kustom.provider/fonts/Inter-SemiBold.otf",
+        "paint_color": "#FF8A8478",
+        "position_anchor": "TOPRIGHT",
+        "position_padding_right": 40.0,
+        "position_padding_top": 1386.0,
+        "internal_toggles": {
+          "paint_color": 10
+        },
+        "internal_formulas": {
+          "paint_color": "$if(br(tasker, nx_meta)=\"\", \"#FF8A8478\", tc(split, br(tasker, nx_meta), \"|\", 1)=\"ERROR\", \"#FFDC665D\", tc(split, br(tasker, nx_meta), \"|\", 1)=\"OPEN\" & df(S) - tc(split, br(tasker, nx_meta), \"|\", 0) > 1200, \"#FFE88A42\", tc(split, br(tasker, nx_meta), \"|\", 1)=\"OPEN\", \"#FF39845B\", \"#FF8A8478\")$"
+        }
+      },
+      {
+        "internal_type": "OverlapLayerModule",
+        "internal_title": "Button Phone",
+        "viewgroup_items": [
+          {
+            "internal_type": "ShapeModule",
+            "internal_title": "Button Phone area",
+            "shape_type": "RECT",
+            "shape_width": 202.66666666666666,
+            "shape_height": 72.0,
+            "paint_color": "#01F5F1E8",
+            "position_anchor": "TOPLEFT",
+            "position_padding_left": 0.0,
+            "position_padding_top": 0.0
+          },
+          {
+            "internal_type": "ShapeModule",
+            "internal_title": "Phone outline",
+            "shape_type": "RECT",
+            "shape_width": 202.66666666666666,
+            "shape_height": 72.0,
+            "paint_color": "#FF252525",
+            "shape_corners": 36.0,
+            "paint_style": "STROKE",
+            "paint_stroke": 2.5,
+            "position_anchor": "TOPLEFT",
+            "position_padding_left": 0.0,
+            "position_padding_top": 0.0
+          },
+          {
+            "internal_type": "TextModule",
+            "internal_title": "Phone label",
+            "text_expression": "Phone",
+            "text_size": 26.0,
+            "text_family": "kfile://org.kustom.provider/fonts/Inter-SemiBold.otf",
+            "paint_color": "#FF252525",
+            "position_anchor": "TOP",
+            "position_padding_top": 20.0
+          }
+        ],
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 40.0,
+        "position_padding_top": 1436.0,
+        "internal_events": [
+          {
+            "type": "SINGLE_TAP",
+            "action": "LAUNCH_APP",
+            "intent": "intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;launchFlags=0x10200000;component=com.samsung.android.dialer/.DialtactsActivity;S.org.kustom.intent.label=Phone;end"
+          }
+        ]
+      },
+      {
+        "internal_type": "OverlapLayerModule",
+        "internal_title": "Button Messages",
+        "viewgroup_items": [
+          {
+            "internal_type": "ShapeModule",
+            "internal_title": "Button Messages area",
+            "shape_type": "RECT",
+            "shape_width": 202.66666666666666,
+            "shape_height": 72.0,
+            "paint_color": "#01F5F1E8",
+            "position_anchor": "TOPLEFT",
+            "position_padding_left": 0.0,
+            "position_padding_top": 0.0
+          },
+          {
+            "internal_type": "ShapeModule",
+            "internal_title": "Messages outline",
+            "shape_type": "RECT",
+            "shape_width": 202.66666666666666,
+            "shape_height": 72.0,
+            "paint_color": "#FF252525",
+            "shape_corners": 36.0,
+            "paint_style": "STROKE",
+            "paint_stroke": 2.5,
+            "position_anchor": "TOPLEFT",
+            "position_padding_left": 0.0,
+            "position_padding_top": 0.0
+          },
+          {
+            "internal_type": "TextModule",
+            "internal_title": "Messages label",
+            "text_expression": "Messages",
+            "text_size": 26.0,
+            "text_family": "kfile://org.kustom.provider/fonts/Inter-SemiBold.otf",
+            "paint_color": "#FF252525",
+            "position_anchor": "TOP",
+            "position_padding_top": 20.0
+          }
+        ],
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 258.66666666666663,
+        "position_padding_top": 1436.0,
+        "internal_events": [
+          {
+            "type": "SINGLE_TAP",
+            "action": "LAUNCH_APP",
+            "intent": "intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;launchFlags=0x10200000;component=com.samsung.android.messaging/com.android.mms.ui.ConversationComposer;S.org.kustom.intent.label=Messages;end"
+          }
+        ]
+      },
+      {
+        "internal_type": "OverlapLayerModule",
+        "internal_title": "Button All apps",
+        "viewgroup_items": [
+          {
+            "internal_type": "ShapeModule",
+            "internal_title": "Button All apps area",
+            "shape_type": "RECT",
+            "shape_width": 202.66666666666666,
+            "shape_height": 72.0,
+            "paint_color": "#01F5F1E8",
+            "position_anchor": "TOPLEFT",
+            "position_padding_left": 0.0,
+            "position_padding_top": 0.0
+          },
+          {
+            "internal_type": "ShapeModule",
+            "internal_title": "All apps outline",
+            "shape_type": "RECT",
+            "shape_width": 202.66666666666666,
+            "shape_height": 72.0,
+            "paint_color": "#FF252525",
+            "shape_corners": 36.0,
+            "paint_style": "STROKE",
+            "paint_stroke": 2.5,
+            "position_anchor": "TOPLEFT",
+            "position_padding_left": 0.0,
+            "position_padding_top": 0.0
+          },
+          {
+            "internal_type": "TextModule",
+            "internal_title": "All apps label",
+            "text_expression": "All apps",
+            "text_size": 26.0,
+            "text_family": "kfile://org.kustom.provider/fonts/Inter-SemiBold.otf",
+            "paint_color": "#FF252525",
+            "position_anchor": "TOP",
+            "position_padding_top": 20.0
+          }
+        ],
+        "position_anchor": "TOPLEFT",
+        "position_padding_left": 477.3333333333333,
+        "position_padding_top": 1436.0,
+        "internal_events": [
+          {
+            "type": "SINGLE_TAP",
+            "action": "LAUNCH_SHORTCUT",
+            "intent": "intent:#Intent;action=com.teslacoilsw.launcher.ACTION;launchFlags=0x10000000;component=com.teslacoilsw.launcher/.NovaShortcutHandler;S.LAUNCHER_ACTION=APP_DRAWER;S.org.kustom.intent.label=App%20drawer;end"
+          }
+        ]
+      }
+    ]
+  }
+}
