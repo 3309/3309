@@ -10,10 +10,16 @@ The same element list also produces klwp/preview.html, a rough desktop preview
 with sample values. It only checks the layout; the real result is what KLWP
 shows on the phone.
 
-Data contract with Tasker (see config/stocks.md):
-  nx_q     5 rows joined by "|", each row  SYM;PRICE;CHG;PCT;DIR
-  nx_chart 6 SVG paths (0-100 box) joined by "|": 5 series + the zero line
-  nx_meta  TS|STATE|UPDATED|YMAX|YMIN|ZEROY|D1|D2|D3|D4|D5|MSG
+Data contract with Tasker (see config/stocks.md), read with $br(tasker, name)$:
+  iwm, spy, qqq, gld, mags   "PRICE;CHG;PCT;DIR[;DATE]"
+  nx_chart  6 SVG paths (0-100 box) joined by "|": 5 series + the zero line
+  nx_meta   TS|STATE|UPDATED|YMAX|YMIN|ZEROY|D1..D5|MSG|SESSION|PROVIDER
+
+Layout: no title bar. Clock, weather and watchlist hang from the top edge; the
+chart and the three buttons hang from the BOTTOM edge with SAFE units kept free
+for Samsung's navigation bar (3-button bar = 48 dp = 96 units on a 360 dp wide
+screen; gesture bar is smaller). Anchoring to the bottom follows the real
+screen height, so nothing is drawn under the navigation bar.
 """
 import html
 import io
@@ -33,21 +39,31 @@ C = {  # palette, #AARRGGBB as KLWP stores it
     "secondary": "#FF75B9D5", "pos": "#FF39845B", "neg": "#FFDC665D",
     "muted": "#FF8A8478", "purple": "#FF8065A9", "rule": "#FFD9D2C3", "clear": "#00000000",
 }
-SYMBOLS = ["IWM", "SPY", "QQQ", "SOXL", "SPCX"]
-SERIES = ["#FFE88A42", "#FF252525", "#FF75B9D5", "#FF8065A9", "#FFA89060"]  # IWM SPY QQQ SOXL SPCX
+SYMBOLS = ["IWM", "SPY", "QQQ", "GLD", "MAGS"]
+VARS = [s.lower() for s in SYMBOLS]                      # KLWP variables: iwm spy qqq gld mags
+SERIES = ["#FFE88A42", "#FF252525", "#FF75B9D5", "#FFA89060", "#FF8065A9"]  # orange ink blue gold purple
+SAFE = 120          # units kept free above the bottom edge (Samsung navigation bar + margin)
 
-# Preview sample: what Tasker really sent for IWM (klwp/sample_iwm.json, built by
-# tasker/make_sample.js from a real Massive response). Used only for preview.html.
-try:
-    _S = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "sample_iwm.json")))
-except Exception:
-    _S = None
-def sq(i, f):
-    return _S["nx_q"].split("|")[i].split(";")[f] if _S else ["--.--"] * 5
+# Preview samples (klwp/samples/*.json, built by tasker/make_sample.js from REAL
+# API responses, or empty/error states). Used only for preview.html / PNGs.
+_S = None
+def use_sample(name):
+    global _S
+    _S = json.load(open(os.path.join(HERE, "samples", name + ".json"))) if name else None
+def _row(i):
+    v = (_S or {}).get(VARS[i], "")
+    return v.split(";") if v else None
+def sq(i, f):          # f: 0 symbol, 1 price, 2 chg, 3 pct, 4 dir
+    if f == 0:
+        return SYMBOLS[i]
+    r = _row(i)
+    return r[f - 1] if r else ["--.--", "--.--", "--.--%", "0"][f - 1]
 def sm(k):
-    return _S["nx_meta"].split("|")[k] if _S else ""
+    m = (_S or {}).get("nx_meta", "")
+    return m.split("|")[k] if m else ""
 def sc(i):
-    return _S["nx_chart"].split("|")[i] if _S else "M 0,0"
+    c = (_S or {}).get("nx_chart", "")
+    return c.split("|")[i] if c else "M 0,0"
 
 FONT_FILES = {
     "regular": "Inter-Regular.otf", "medium": "Inter-Medium.otf",
@@ -58,11 +74,13 @@ def font(key):
     return "kfile://org.kustom.provider/fonts/" + FONT_FILES[key]
 
 # ---------------------------------------------------------------- formulas
-def Q(i, f):   # field f of watchlist row i
-    return f'tc(split, tc(split, br(tasker, nx_q), "|", {i}), ";", {f})'
+def Q(i, f):   # field f (0 price, 1 chg, 2 pct, 3 dir) of symbol i
+    return f'tc(split, br(tasker, {VARS[i]}), ";", {f})'
+def NOQ(i):
+    return f'br(tasker, {VARS[i]})=""'
 def MT(k):     # field k of meta
     return f'tc(split, br(tasker, nx_meta), "|", {k})'
-NOQ = 'br(tasker, nx_q)=""'
+EOD = f'{MT(13)}="Massive EOD"'
 NOMETA = 'br(tasker, nx_meta)=""'
 NOCHART = 'br(tasker, nx_chart)=""'
 
@@ -75,7 +93,10 @@ def _pos(mod, x, y, anchor):
         mod["position_padding_right"] = float(x)
     else:
         mod["position_padding_left"] = float(x)
-    mod["position_padding_top"] = float(y)
+    if anchor.startswith("BOTTOM"):
+        mod["position_padding_bottom"] = float(y)      # y = distance from the bottom edge
+    else:
+        mod["position_padding_top"] = float(y)
 
 def text(title, expr, x, y, size, fkey, color, anchor="TOPLEFT",
          color_formula=None, sample=None, top_formula=None, visible=None, pcolor=None):
@@ -140,16 +161,22 @@ def group(title, items, stack=None, margin=0, x=0, y=0, events=None):
         m["internal_events"] = events
     return m
 
-def box(title, x, y, w, h, build_children, events=None):
+def box(title, x, y, w, h, build_children, events=None, bottom=None):
     """Overlap layer at (x, y) whose size is fixed by an invisible w*h rect.
-    Children use coordinates relative to the box; anchor TOP centres them."""
+    Children use coordinates relative to the box: TOPLEFT/TOP from its top-left,
+    TOPRIGHT from its right edge. With bottom=N the box hangs N units above the
+    screen's bottom edge (y is then only used for the preview)."""
     start = len(preview)
     kids = [rect(title + " area", 0, 0, w, h, "#01F5F1E8" if events else C["clear"])]
     kids += build_children()
     for kind, d in preview[start:]:
-        d["x"] = d["x"] + x; d["y"] = d["y"] + y
+        d["x"] = d["x"] + (W - x - w if d.get("anchor") == "TOPRIGHT" else x)
+        d["y"] = d["y"] + y
     m = {"internal_type": "OverlapLayerModule", "internal_title": title, "viewgroup_items": kids}
-    _pos(m, x, y, "TOPLEFT")
+    if bottom is None:
+        _pos(m, x, y, "TOPLEFT")
+    else:
+        _pos(m, x, bottom, "BOTTOMLEFT")
     if events:
         m["internal_events"] = events
     return m
@@ -165,12 +192,8 @@ def launch(action, intent):
 
 # ---------------------------------------------------------------- 1 clock
 def clock():
-    y0 = 88
-    items = [
-        text("Brand", "NEXUS[c=#E88A42].[/c]", M, y0, 24, "xbold", C["text"], sample="NEXUS."),
-        text("Kicker", "MARKETS & WEATHER", M, y0 + 4, 19, "semibold", C["muted"], anchor="TOPRIGHT"),
-        rect("Heavy rule", M, y0 + 40, CW, 4, C["text"]),
-    ]
+    y0 = 14        # no title bar: the clock is the first thing on screen (status bar sits above ~y 50)
+    items = []
     # time + AM/PM in a bottom-aligned horizontal stack
     t = text("Time", "$df(h:mm)$", 0, 0, 170, "light", C["text"], sample="10:24")
     ap = text("AM/PM", "$df(a)$", 0, 0, 44, "medium", C["muted"], sample="AM")
@@ -224,7 +247,7 @@ def sample_icon(code):
     return sun, cloud, drops
 
 def weather():
-    y0 = 452
+    y0 = 372
     colw = CW / 5
     items = [
         text("Weather label", "5-DAY FORECAST", M, y0, 19, "semibold", C["muted"]),
@@ -261,90 +284,97 @@ def weather():
 
 # ---------------------------------------------------------------- 3 watchlist
 def stocks():
-    y0 = 748
+    y0 = 668
     items = [
         text("Label", "WATCHLIST", M, y0, 19, "semibold", C["muted"]),
-        text("Label eod", "END OF DAY", M, y0, 19, "semibold", C["muted"], anchor="TOPRIGHT"),
+        text("Label eod", f'$if({EOD}, "END OF DAY", "LATEST")$', M, y0, 19, "semibold", C["muted"], anchor="TOPRIGHT",
+             sample="END OF DAY" if sm(13) == "Massive EOD" else "LATEST"),
         text("H symbol", "SYMBOL", M, y0 + 36, 18, "semibold", C["muted"]),
-        text("H price", "CLOSE", 340, y0 + 36, 18, "semibold", C["muted"], anchor="TOPRIGHT"),
+        text("H price", f'$if({EOD}, "CLOSE", "PRICE")$', 340, y0 + 36, 18, "semibold", C["muted"], anchor="TOPRIGHT",
+             sample="CLOSE" if sm(13) == "Massive EOD" else "PRICE"),
         text("H chg", "CHG $", 180, y0 + 36, 18, "semibold", C["muted"], anchor="TOPRIGHT"),
         text("H pct", "CHG %", M, y0 + 36, 18, "semibold", C["muted"], anchor="TOPRIGHT"),
     ]
-    color = lambda i: (f'$if({NOQ}, "{C["muted"]}", {Q(i, 4)}>0, "{C["pos"]}", '
-                       f'{Q(i, 4)}<0, "{C["neg"]}", "{C["muted"]}")$')
+    color = lambda i: (f'$if({NOQ(i)}, "{C["muted"]}", {Q(i, 3)}>0, "{C["pos"]}", '
+                       f'{Q(i, 3)}<0, "{C["neg"]}", "{C["muted"]}")$')
     pc = lambda i: {"1": C["pos"], "-1": C["neg"]}.get(sq(i, 4), C["muted"])
     for i, sym in enumerate(SYMBOLS):
         y = y0 + 72 + 44 * i
         items += [
             rect(f"Row rule {i}", M, y, CW, 2, C["rule"]),
             circle(f"Dot {i}", M, y + 15, 16, SERIES[i]),
-            text(f"Symbol {i}", f'$if({NOQ}, "{sym}", {Q(i, 0)})$', M + 28, y + 7, 27, "bold", C["text"], sample=sym),
-            text(f"Price {i}", f'$if({NOQ}, "--.--", {Q(i, 1)})$', 340, y + 7, 27, "regular", C["text"],
+            text(f"Symbol {i}", sym, M + 28, y + 7, 27, "bold", C["text"], sample=sym),
+            text(f"Price {i}", f'$if({NOQ(i)}, "--.--", {Q(i, 0)})$', 340, y + 7, 27, "regular", C["text"],
                  anchor="TOPRIGHT", sample=sq(i, 1)),
             text(f"Change {i}",
-                 f'$if({NOQ}, "--.--", {Q(i, 4)}<0, "▼ " + {Q(i, 2)}, {Q(i, 4)}>0, "▲ " + {Q(i, 2)}, {Q(i, 2)})$',
+                 f'$if({NOQ(i)}, "--.--", {Q(i, 3)}<0, "▼ " + {Q(i, 1)}, {Q(i, 3)}>0, "▲ " + {Q(i, 1)}, {Q(i, 1)})$',
                  180, y + 7, 27, "semibold", C["muted"], anchor="TOPRIGHT",
                  color_formula=color(i), pcolor=pc(i), sample=("▼ " if sq(i, 4) == "-1" else "▲ ") + sq(i, 2) if sq(i, 4) != "0" else sq(i, 2)),
-            text(f"Percent {i}", f'$if({NOQ}, "--.--%", {Q(i, 3)})$', M, y + 7, 27, "semibold", C["muted"],
+            text(f"Percent {i}", f'$if({NOQ(i)}, "--.--%", {Q(i, 2)})$', M, y + 7, 27, "semibold", C["muted"],
                  anchor="TOPRIGHT", color_formula=color(i), pcolor=pc(i), sample=sq(i, 3)),
         ]
     return items
 
 # ---------------------------------------------------------------- 4 chart
-SAMPLE_PATHS = [
-    "M 0,50 C 25,50 50,48 100,58",
-    "M 0,42 C 30,40 60,45 100,62",
-    "M 0,38 C 30,48 60,62 100,56",
-    "M 0,54 C 30,72 60,70 100,30",
-    "M 0,72 C 30,80 60,10 100,18",
-]
-def chart():
-    y0 = 1086
-    px, py, pw, ph = M + 52, y0 + 40, CW - 52, 184
+
+def chart_items():
+    """Chart, legend and footer. Coordinates are relative to the bottom block
+    (x from its left edge, TOPRIGHT x from its right edge, y from its top)."""
+    y0 = 0
+    px, py, pw, ph = 52, y0 + 40, CW - 52, 184
     items = [
-        text("Label", "LAST 5 SESSIONS", M, y0, 19, "semibold", C["muted"]),
-        text("Label unit", "% FROM FIRST CLOSE", M, y0, 19, "semibold", C["muted"], anchor="TOPRIGHT"),
+        text("Chart label", "LAST 5 SESSIONS", 0, y0, 19, "semibold", C["muted"]),
+        text("Chart label unit", "% FROM FIRST CLOSE", 0, y0, 19, "semibold", C["muted"], anchor="TOPRIGHT"),
         rect("Grid top", px, py, pw, 2, C["rule"]),
         rect("Grid bottom", px, py + ph, pw, 2, C["rule"]),
         path("Zero line", px, py, pw, ph, "#FFBDB5A5", f'$tc(split, br(tasker, nx_chart), "|", 5)$',
-             stroke=2, sample=sc(5) if _S else "M 0,50 L 100,50"),
-        text("Y max", f'$if({NOMETA}, "", {MT(3)})$', M, py - 9, 17, "regular", C["muted"], sample=sm(3)),
-        text("Y min", f'$if({NOMETA}, "", {MT(4)})$', M, py + ph - 9, 17, "regular", C["muted"], sample=sm(4)),
-        text("Y zero", f'$if({NOMETA}, "", "0%")$', M, (py - 9 + ph * float(sm(5)) / 100) if _S else py + ph / 2 - 9, 17, "regular", C["muted"],
-             top_formula=f'$if({NOMETA}, {py + ph / 2 - 9}, {py - 9} + {ph} * {MT(5)} / 100)$', sample="0%"),
+             stroke=2, sample=sc(5)),
+        text("Y max", f'$if({NOMETA}, "", {MT(3)})$', 0, py - 9, 17, "regular", C["muted"], sample=sm(3)),
+        text("Y min", f'$if({NOMETA}, "", {MT(4)})$', 0, py + ph - 9, 17, "regular", C["muted"], sample=sm(4)),
+        text("Y zero", f'$if({NOMETA}, "", "0%")$', 0,
+             (py - 9 + ph * float(sm(5)) / 100) if sm(5) else py + ph / 2 - 9, 17, "regular", C["muted"],
+             top_formula=f'$if({NOMETA}, {py + ph / 2 - 9}, {py - 9} + {ph} * {MT(5)} / 100)$',
+             sample="0%" if sm(5) else ""),
     ]
     for i in range(5):
         items.append(path(f"Line {SYMBOLS[i]}", px, py, pw, ph, SERIES[i],
                           f'$tc(split, br(tasker, nx_chart), "|", {i})$',
-                          stroke=4 if i != 1 else 3.2, sample=sc(i) if _S else SAMPLE_PATHS[i]))
+                          stroke=4 if i != 1 else 3.2, sample=sc(i)))
     for k in range(5):
         bw = pw / 5
         items.append(box(f"Chart day {k}", px + bw * k, py + ph + 12, bw, 24, lambda k=k, bw=bw: [
             ctext(f"Day label {k}", f'$if({NOMETA}, "", {MT(6 + k)})$', bw, 0, 17, "regular", C["muted"],
-                  sample=sm(6 + k) if _S else ["Mon", "Tue", "Wed", "Thu", "Fri"][k])]))
+                  sample=sm(6 + k))]))
     waiting = box("Chart waiting", px, py + ph / 2 - 16, pw, 32, lambda: [
-        ctext("Waiting", "Waiting for stock data from Tasker", pw, 0, 22, "medium", C["muted"], sample="")])
+        ctext("Waiting", "Waiting for stock data from Tasker", pw, 0, 22, "medium", C["muted"],
+              sample="" if sc(0) != "M 0,0" or sm(1) else "Waiting for stock data from Tasker")])
     waiting["internal_toggles"] = {"config_visible": 10}
     waiting["internal_formulas"] = {"config_visible": f"$if({NOCHART}, ALWAYS, REMOVE)$"}
     items.append(waiting)
-    # legend
+    # compact legend: one swatch + symbol per line, same colours as the rows
     ly = y0 + 264
     for i, sym in enumerate(SYMBOLS):
-        x = M + (CW / 5) * i
+        x = (CW / 5) * i
         items += [rect(f"Legend swatch {i}", x, ly + 12, 24, 6, SERIES[i], corners=3),
                   text(f"Legend {i}", sym, x + 32, ly, 20, "bold", C["text"])]
-    # footer
+    # footer: last update (with data source) and status
     fy = y0 + 300
-    # End-of-day data only: never labelled "live". Stale = no successful update for 36 h.
-    status = (f'$if({NOMETA}, "Not connected yet", {MT(1)}="ERROR", "● Error · showing last data", '
-              f'df(S) - {MT(0)} > 129600, "● Stale · close of " + {MT(12)}, "● Close of " + {MT(12)})$')
-    status_c = (f'$if({NOMETA}, "{C["muted"]}", {MT(1)}="ERROR", "{C["neg"]}", '
-                f'df(S) - {MT(0)} > 129600, "{C["accent"]}", "{C["pos"]}")$')
+    stale = (f'({MT(1)}="OPEN" & df(S) - {MT(0)} > 2700) | ({MT(1)}="EOD" & df(S) - {MT(0)} > 129600) | '
+             f'({MT(1)}="CLOSED" & df(S) - {MT(0)} > 345600)')
+    status = (f'$if({NOMETA}, "Not connected yet", {MT(1)}="ERROR", "● Error · last data kept", '
+              f'{stale}, "● Stale data", {MT(1)}="OPEN", "● Market open", {MT(1)}="EOD", "● Close of " + {MT(12)}, '
+              f'"Market closed · " + {MT(12)})$')
+    status_c = (f'$if({NOMETA}, "{C["muted"]}", {MT(1)}="ERROR", "{C["neg"]}", {stale}, "{C["accent"]}", '
+                f'{MT(1)}="OPEN" | {MT(1)}="EOD", "{C["pos"]}", "{C["muted"]}")$')
+    st = sm(1)
+    s_status = {"": "Not connected yet", "ERROR": "● Error · last data kept", "OPEN": "● Market open",
+                "EOD": "● Close of " + sm(12)}.get(st, "Market closed · " + sm(12))
+    s_color = {"": C["muted"], "ERROR": C["neg"], "OPEN": C["pos"], "EOD": C["pos"]}.get(st, C["muted"])
     items += [
-        text("Updated", f'$if({NOMETA}, "Updated --:--", "Updated " + {MT(2)})$', M, fy, 19, "regular",
-             C["muted"], sample=("Updated " + sm(2)) if _S else "Updated --:--"),
-        text("Status", status, M, fy, 19, "semibold", C["muted"], anchor="TOPRIGHT",
-             color_formula=status_c, pcolor=C["pos"] if _S else None, sample=("● Close of " + sm(12)) if _S else "Not connected yet"),
+        text("Updated", f'$if({NOMETA}, "Updated --:--", "Updated " + {MT(2)} + " · " + {MT(13)})$', 0, fy, 19,
+             "regular", C["muted"], sample=("Updated " + sm(2) + " · " + sm(13)) if sm(2) else "Updated --:--"),
+        text("Status", status, 0, fy, 19, "semibold", C["muted"], anchor="TOPRIGHT",
+             color_formula=status_c, pcolor=s_color, sample=s_status),
     ]
     return items
 
@@ -359,20 +389,29 @@ INTENT_DRAWER = ("intent:#Intent;action=com.teslacoilsw.launcher.ACTION;launchFl
                  "component=com.teslacoilsw.launcher/.NovaShortcutHandler;S.LAUNCHER_ACTION=APP_DRAWER;"
                  "S.org.kustom.intent.label=App%20drawer;end")
 
-def buttons():
-    y0, bh, gap = 1436, 72, 16
+BUTTONS_Y, BUTTON_H, BLOCK_H = 336, 72, 408      # inside the bottom block
+
+def button_items():
+    gap = 16
     bw = (CW - 2 * gap) / 3
     items = []
     for i, (label, action, intent) in enumerate([
             ("Phone", "LAUNCH_APP", INTENT_PHONE),
             ("Messages", "LAUNCH_APP", INTENT_SMS),
             ("All apps", "LAUNCH_SHORTCUT", INTENT_DRAWER)]):
-        x = M + (bw + gap) * i
-        items.append(box(f"Button {label}", x, y0, bw, bh, lambda label=label: [
-            rect(f"{label} outline", 0, 0, bw, bh, C["text"], corners=bh / 2, stroke=2.5),
+        x = (bw + gap) * i
+        items.append(box(f"Button {label}", x, BUTTONS_Y, bw, BUTTON_H, lambda label=label: [
+            rect(f"{label} outline", 0, 0, bw, BUTTON_H, C["text"], corners=BUTTON_H / 2, stroke=2.5),
             ctext(f"{label} label", label, bw, 20, 26, "semibold", C["text"]),
         ], events=launch(action, intent)))
     return items
+
+def bottom_block():
+    """Chart + legend + footer + buttons, hanging SAFE units above the real bottom
+    edge of the screen, so the buttons never sit under the navigation bar."""
+    top = H - SAFE - BLOCK_H                     # where it lands on a 720x1560 (S22) screen, for the preview
+    return [box("Bottom block (chart + buttons)", M, top, CW, BLOCK_H,
+                lambda: chart_items() + button_items(), bottom=SAFE)]
 
 # ---------------------------------------------------------------- assemble
 def build():
@@ -380,12 +419,12 @@ def build():
         "internal_type": "RootLayerModule",
         "background_type": "SOLID",
         "background_color": C["bg"],
-        "viewgroup_items": clock() + weather() + stocks() + chart() + buttons(),
+        "viewgroup_items": clock() + weather() + stocks() + bottom_block(),
     }
     return {
         "preset_info": {
             "version": 13, "title": "NEXUS",
-            "description": "Markets & weather dashboard (clock, 5-day forecast, watchlist, 5-day chart).",
+            "description": "Markets & weather dashboard: clock, 5-day forecast, IWM SPY QQQ GLD MAGS, 5-session chart.",
             "author": "NEXUS", "email": "", "archive": "",
             "features": "LOCATION WEATHER", "release": 376417910,
             "locked": False, "pflags": 0,
@@ -395,8 +434,8 @@ def build():
     }
 
 def thumbnails():
-    """Portrait/landscape JPEG thumbnails from the mockup screenshot, if Pillow is available."""
-    png = os.path.join(ROOT, "mockup", "nexus-mockup.png")
+    """Portrait/landscape JPEG thumbnails from the rendered real-data preview."""
+    png = os.path.join(HERE, "previews", "1-real-data.png")
     try:
         from PIL import Image
         im = Image.open(png).convert("RGB")
@@ -406,7 +445,7 @@ def thumbnails():
     except Exception as e:  # pragma: no cover
         raise SystemExit(f"Pillow + mockup PNG needed for thumbnails: {e}")
 
-def write_preview(path_out):
+def write_preview(path_out, caption=""):
     fam = {"regular": ("Inter", 400), "medium": ("Inter", 500), "semibold": ("Inter", 600),
            "bold": ("Inter", 700), "xbold": ("Inter", 800), "light": ("Inter Display", 300)}
     css = lambda c: "#" + c[3:] if c.startswith("#FF") or len(c) == 9 else c
@@ -439,16 +478,38 @@ def write_preview(path_out):
             out.append(f'<svg style="position:absolute;left:{d["x"]}px;top:{d["y"]}px" width="{d["w"]}" '
                        f'height="{d["h"]}" viewBox="0 0 100 100" preserveAspectRatio="none">'
                        f'<path d="{d["d"]}" {paint} stroke-linecap="round" stroke-linejoin="round"/></svg>')
+    # Not part of the wallpaper: shows where Samsung's 3-button navigation bar (48 dp) sits.
+    nav = 96
+    out.append(f'<div style="position:absolute;left:0;right:0;bottom:0;height:{nav}px;background:rgba(37,37,37,.10);'
+               f'border-top:2px dashed rgba(37,37,37,.35);font:600 15px Inter;color:#8A8478;display:flex;'
+               f'align-items:center;justify-content:center">Samsung navigation bar area (not part of the wallpaper)</div>')
+    if caption:
+        out.append(f'<div style="position:absolute;left:0;right:0;top:0;height:40px;background:#252525;color:#F5F1E8;'
+                   f'font:600 16px Inter;display:flex;align-items:center;justify-content:center">{html.escape(caption)}</div>')
     doc = f"""<!doctype html><html><head><meta charset="utf-8"><title>NEXUS Preview</title>
 <style>body{{margin:0;background:#F5F1E8}}#c{{position:relative;width:{W}px;height:{H}px;overflow:hidden}}
 .t{{position:absolute;white-space:nowrap;line-height:1.2}}</style></head>
 <body><div id="c">{''.join(out)}</div></body></html>"""
     open(path_out, "w").write(doc)
 
+PREVIEWS = [  # (sample file, caption shown on the preview image)
+    ("1-real-data", "Preview 1: real end-of-day data (Massive, close of Fri 6 Nov 2026)"),
+    ("2-error", "Preview 2: update failed, last good data kept"),
+    ("3-first-run", "Preview 3: first start, before Tasker has sent data"),
+]
+
 def main():
-    preset = build()
+    import subprocess
+    use_sample(None); preview.clear()
+    preset = build()                           # the preset never depends on preview samples
     pj = json.dumps(preset, indent=2, ensure_ascii=False)
     json.loads(pj)
+    os.makedirs(os.path.join(HERE, "previews"), exist_ok=True)
+    for name, caption in PREVIEWS:
+        use_sample(name); preview.clear(); build()
+        write_preview(os.path.join(HERE, "previews", name + ".html"), caption)
+    use_sample(None); preview.clear()
+    subprocess.run(["node", os.path.join(HERE, "render_previews.js")], check=True)
     thumb_p, thumb_l = thumbnails()
     out = os.path.join(HERE, "NEXUS.klwp")
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
@@ -458,7 +519,6 @@ def main():
         for f in FONT_FILES.values():
             z.write(os.path.join(HERE, "fonts", f), "fonts/" + f)
     open(os.path.join(HERE, "preset.json"), "w").write(pj)  # readable copy for review
-    write_preview(os.path.join(HERE, "preview.html"))
     print(f"wrote {out} ({os.path.getsize(out)//1024} KB)")
 
 if __name__ == "__main__":

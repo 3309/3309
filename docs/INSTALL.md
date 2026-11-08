@@ -1,48 +1,47 @@
-# NEXUS — Install on your Galaxy S22 (IWM proof of concept)
+# NEXUS — Install on your Galaxy S22
 
 About 15 minutes, no programming. You need two files: **NEXUS.klwp** (wallpaper) and
 **NEXUS.prj.xml** (Tasker). Download both to your phone's **Downloads** folder.
+
+If you installed an earlier NEXUS version, do **Part 0** first.
+
+## Part 0 — Remove the old version (only if you installed one before)
+1. Tasker → bottom bar → long-press the **NEXUS** project tab → **Delete** → choose to delete its profiles and tasks.
+2. Tasker → **VARS** tab → delete every variable starting with `%Nexus` **except** `%NexusKey`.
+   (If `%NexusKey` holds a Massive key and you're switching to Twelve Data, change its value to the Twelve Data key.)
 
 ## Part A — Samsung battery settings (once)
 1. **Settings → Apps → Tasker → Battery → Unrestricted.**
 2. **Settings → Apps → KLWP → Battery → Unrestricted.**
 3. **Settings → Battery → Background usage limits → Never sleeping apps → +** → add **Tasker** and **KLWP**.
 
-The update runs at night, so Samsung must not put Tasker to sleep.
-
 ## Part B — Wallpaper (KLWP)
 1. Open **KLWP** → menu **☰** → **Load preset** → import/folder icon → pick **NEXUS.klwp**.
 2. Tap **Save 💾** (top right). If asked, set it as the **Home screen** wallpaper.
-3. Allow **Location** when asked (needed for weather). Otherwise: KLWP menu → Settings → Location.
-4. KLWP menu → Settings → **Clock mode → Automatic** (follows your phone's 12/24-hour setting).
+3. Allow **Location** when asked (for the weather). Otherwise: KLWP menu → Settings → Location.
+4. KLWP menu → Settings → **Clock mode → Automatic**.
 
-You should see the clock, the date, the weather, empty stock rows and three buttons.
-The wallpaper is set up for **3 Nova pages** and stays the same on each page.
-
-> If KLWP says the file isn't valid, stop and send me a screenshot.
+There's no title bar now: the clock is at the very top. The chart and the three buttons sit at the
+bottom, kept clear of Samsung's navigation buttons.
 
 ## Part C — Stock updater (Tasker)
 1. Open **Tasker**. The switch at the top must be **on**.
 2. **Long-press the house icon** (bottom left) → **Import Project** → pick **NEXUS.prj.xml**.
-3. Add your Massive key (see API-SETUP.md): **VARS** tab → **+** → `%NexusKey` → ✓ → tap it → paste the key → ✓.
-4. **TASKS** tab → **NEXUS_Update_Market** → **▶**. Wait ~10 seconds (only IWM for now).
-5. Look at your home screen: the IWM row shows a close price and change, and the chart has an orange line.
-   The bottom right shows **● Close of** *(the last trading day)*.
+3. **VARS** tab → **+** → `%NexusKey` → ✓ → tap it → paste your **Twelve Data** key → ✓.
+   (Read the licensing note in DATA-PROVIDER.md first: the free plan is for testing only.)
+4. **TASKS** tab → **NEXUS_Update_Market** → **▶**. Wait about **1½ minutes**.
+   There's a planned 61-second pause between the prices and the 5-day history, because of the free plan's per-minute limit.
+5. Home screen: 5 prices with changes, 5 colored lines, and "Updated … · Twelve Data".
 
-**Check:** compare IWM's close with Google Finance for that same day. It should match to the cent.
+From then on, while the screen is on, it refreshes about every 30 minutes during US market hours.
 
-## Part D — Turn on all five stocks (after IWM is confirmed)
-Tasker → **VARS** → **+** → `%NexusSymbols` → value `IWM,SPY,QQQ,SOXL,SPCX` → run **NEXUS_Update_Market** again.
-It takes about a minute (13-second pauses between the 5 requests, because of the free plan's limit).
+### Optional — use Massive (end of day) instead
+VARS → **+** → `%NexusProvider` → value `massive`. Put your Massive key in `%NexusKey`.
 
-## Optional — Manual refresh button on the home screen
-Long-press an empty spot → **Widgets** → **Tasker** → **Task Shortcut** → drag it to a page → pick **NEXUS_Update_Market**.
+### Optional — refresh button on a home screen
+Long-press an empty spot → **Widgets** → **Tasker** → **Task Shortcut** → place it → pick **NEXUS_Update_Market**.
 
-## Part E — Nova
-- Keep the dashboard area free of icons and widgets.
-- The wallpaper has its own **Phone / Messages / All apps** buttons, so you can hide Nova's dock:
-  Nova Settings → Dock → off.
-
-## What runs in the background
-Once an hour Tasker checks the time (no internet). The download happens **once a day after 00:15 New York time**:
-5 small requests, then KLWP updates. Nothing else runs.
+## Part D — Nova
+- Keep the dashboard pages free of icons and widgets. Nova's dock can be hidden (Nova Settings → Dock → off),
+  since the wallpaper has its own Phone / Messages / All apps buttons.
+- If you use **gesture navigation** (Settings → Display → Navigation bar → Swipe gestures), there's extra space under the buttons. That's expected.
